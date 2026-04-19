@@ -1,0 +1,422 @@
+// This is your Prisma schema file
+// Vantage — Website Intelligence & Outreach Platform
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+enum ProspectStatus {
+  NEW
+  ENRICHING
+  ENRICHED
+  AUDITING
+  AUDITED
+  REPORT_GENERATING
+  REPORT_READY
+  OUTREACH_QUEUED
+  OUTREACH_SENT
+  ENGAGED
+  CONVERTED
+  UNSUBSCRIBED
+  SUPPRESSED
+  ARCHIVED
+}
+
+enum OutreachState {
+  PENDING
+  APPROVED
+  INITIAL_QUEUED
+  INITIAL_SENT
+  FOLLOWUP_1_QUEUED
+  FOLLOWUP_1_SENT
+  FOLLOWUP_2_QUEUED
+  FOLLOWUP_2_SENT
+  FOLLOWUP_3_QUEUED
+  FOLLOWUP_3_SENT
+  FOLLOWUP_4_QUEUED
+  FOLLOWUP_4_SENT
+  COMPLETED
+  REPLIED
+  OPTED_OUT
+  BOUNCED
+  SUPPRESSED
+}
+
+enum EmailEventType {
+  sent
+  opened
+  clicked
+  replied
+  bounced
+  complained
+  unsubscribed
+}
+
+enum RecommendationPriority {
+  P0
+  P1
+  P2
+}
+
+enum SuppressionType {
+  EMAIL
+  DOMAIN
+}
+
+enum WorkflowRunStatus {
+  running
+  completed
+  failed
+}
+
+// ─── Core entities ────────────────────────────────────────────────────────────
+
+model Organization {
+  id          String   @id @default(cuid())
+  clerkOrgId  String   @unique
+  name        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  users        User[]
+  brandConfig  BrandConfig?
+  prospects    Prospect[]
+  campaigns    Campaign[]
+  suppressions SuppressionEntry[]
+  dailyLimits  DailyEmailLimit[]
+  workflowRuns WorkflowRun[]
+
+  @@map("organizations")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  clerkUserId  String   @unique
+  orgId        String
+  email        String
+  name         String?
+  createdAt    DateTime @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@map("users")
+}
+
+model BrandConfig {
+  id              String  @id @default(cuid())
+  orgId           String  @unique
+  companyName     String  @default("TexMG")
+  senderName      String  @default("Scott")
+  senderEmail     String  @default("scott@texmg.com")
+  bookingUrl      String?
+  logoR2Key       String?
+  primaryColor    String  @default("#1a1a2e")
+  accentColor     String  @default("#3b82f6")
+  companyAddress  String?
+  updatedAt       DateTime @updatedAt
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@map("brand_configs")
+}
+
+// ─── Prospect pipeline ────────────────────────────────────────────────────────
+
+model Prospect {
+  id           String          @id @default(cuid())
+  orgId        String
+  domain       String
+  companyName  String?
+  industry     String?
+  city         String?
+  state        String?
+  website      String?
+  status       ProspectStatus  @default(NEW)
+  icpScore     Int?
+  notes        String?
+  sourceType   String?         // csv | manual | sourcing_agent
+  createdAt    DateTime        @default(now())
+  updatedAt    DateTime        @updatedAt
+
+  organization  Organization    @relation(fields: [orgId], references: [id])
+  contacts      Contact[]
+  audits        WebsiteAudit[]
+  reports       ProspectReport[]
+  briefs        InternalBrief[]
+  painPoints    PainPointAnalysis[]
+  threads       OutreachThread[]
+  workflowRuns  WorkflowRun[]
+
+  @@unique([orgId, domain])
+  @@map("prospects")
+}
+
+model Contact {
+  id             String   @id @default(cuid())
+  prospectId     String
+  firstName      String?
+  lastName       String?
+  email          String?
+  title          String?
+  linkedinUrl    String?
+  phone          String?
+  isPrimary      Boolean  @default(false)
+  emailVerified  Boolean  @default(false)
+  emailSource    String?  // manual | enriched | guessed
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  prospect  Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  emails    Email[]
+
+  @@map("contacts")
+}
+
+// ─── Evaluation (CORE) ────────────────────────────────────────────────────────
+
+model WebsiteAudit {
+  id            String   @id @default(cuid())
+  prospectId    String
+  triggeredBy   String?  // userId or "system"
+  domain        String
+  crawlDataKey  String?  // R2 key for raw crawl bundle JSON
+  screenshotKey String?  // R2 key for homepage screenshot
+  overallScore  Int?
+  status        String   @default("pending") // pending | crawling | evaluating | completed | failed
+  errorMessage  String?
+  crawledAt     DateTime?
+  evaluatedAt   DateTime?
+  createdAt     DateTime @default(now())
+
+  prospect        Prospect              @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  dimensionScores AuditDimensionScore[]
+  recommendations AuditRecommendation[]
+  reports         ProspectReport[]
+
+  @@map("website_audits")
+}
+
+model AuditDimensionScore {
+  id            String   @id @default(cuid())
+  auditId       String
+  category      String   // ux_cro | visual_design | seo | geo_ai | content
+  dimension     String   // e.g. "cta_visibility", "title_meta_optimization"
+  score         Int      // 0-10
+  wins          Json     @default("[]")
+  criticalFixes Json     @default("[]")
+  notes         String?
+
+  audit WebsiteAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@unique([auditId, dimension])
+  @@map("audit_dimension_scores")
+}
+
+model AuditRecommendation {
+  id          String                 @id @default(cuid())
+  auditId     String
+  priority    RecommendationPriority
+  title       String
+  description String
+  effort      String                 // low | medium | high
+  impact      String                 // low | medium | high
+  category    String
+
+  audit WebsiteAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
+
+  @@map("audit_recommendations")
+}
+
+// ─── Reports (CORE) ───────────────────────────────────────────────────────────
+
+model ProspectReport {
+  id              String   @id @default(cuid())
+  prospectId      String
+  auditId         String
+  publicToken     String   @unique @default(cuid())
+  pdfKey          String?  // R2 key
+  pdfUrl          String?  // signed URL (expires)
+  markdownContent String?
+  jsonContent     Json?
+  viewCount       Int      @default(0)
+  status          String   @default("generating") // generating | ready | failed
+  errorMessage    String?
+  generatedAt     DateTime?
+  createdAt       DateTime @default(now())
+
+  prospect Prospect     @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  audit    WebsiteAudit @relation(fields: [auditId], references: [id])
+
+  @@map("prospect_reports")
+}
+
+// ─── Intelligence ─────────────────────────────────────────────────────────────
+
+model InternalBrief {
+  id               String   @id @default(cuid())
+  prospectId       String
+  auditId          String?
+  markdownContent  String
+  appointmentAngle String?
+  createdAt        DateTime @default(now())
+
+  prospect Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+
+  @@map("internal_briefs")
+}
+
+model PainPointAnalysis {
+  id                String   @id @default(cuid())
+  prospectId        String
+  auditId           String?
+  primaryPainPoint  String?
+  outreachAngles    Json     @default("[]")
+  valueHooks        Json     @default("[]")
+  createdAt         DateTime @default(now())
+
+  prospect Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+
+  @@map("pain_point_analyses")
+}
+
+// ─── Outreach ─────────────────────────────────────────────────────────────────
+
+model Campaign {
+  id              String   @id @default(cuid())
+  orgId           String
+  name            String
+  status          String   @default("active") // active | paused | archived
+  dailyNewLimit   Int      @default(10)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  organization Organization   @relation(fields: [orgId], references: [id])
+  threads      OutreachThread[]
+
+  @@map("campaigns")
+}
+
+model OutreachThread {
+  id            String        @id @default(cuid())
+  prospectId    String
+  campaignId    String?
+  state         OutreachState @default(PENDING)
+  currentStep   Int           @default(0) // 0=initial, 1-4=followup
+  nextActionAt  DateTime?
+  approvedAt    DateTime?
+  approvedBy    String?
+  pausedAt      DateTime?
+  pausedReason  String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  prospect Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  campaign Campaign? @relation(fields: [campaignId], references: [id])
+  emails   Email[]
+
+  @@unique([prospectId, campaignId])
+  @@map("outreach_threads")
+}
+
+model Email {
+  id              String   @id @default(cuid())
+  threadId        String
+  contactId       String
+  resendMessageId String?  @unique
+  sequenceIndex   Int      // 0=initial, 1-4=followup
+  subject         String
+  htmlBody        String
+  textBody        String?
+  fromName        String
+  fromEmail       String
+  status          String   @default("draft") // draft | queued | sent | failed
+  sentAt          DateTime?
+  errorMessage    String?
+  createdAt       DateTime @default(now())
+
+  thread  OutreachThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  contact Contact        @relation(fields: [contactId], references: [id])
+  events  EmailEvent[]
+
+  @@map("emails")
+}
+
+model EmailEvent {
+  id        String         @id @default(cuid())
+  emailId   String
+  type      EmailEventType
+  url       String?        // for click events
+  ipAddress String?
+  userAgent String?
+  data      Json?
+  createdAt DateTime       @default(now())
+
+  email Email @relation(fields: [emailId], references: [id], onDelete: Cascade)
+
+  @@map("email_events")
+}
+
+// ─── Operations ───────────────────────────────────────────────────────────────
+
+model DailyEmailLimit {
+  id              String   @id @default(cuid())
+  orgId           String
+  date            String   // YYYY-MM-DD
+  newOutboundSent Int      @default(0)
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, date])
+  @@map("daily_email_limits")
+}
+
+model SuppressionEntry {
+  id        String          @id @default(cuid())
+  orgId     String
+  type      SuppressionType
+  value     String          // email address or domain
+  reason    String?
+  createdAt DateTime        @default(now())
+
+  organization Organization @relation(fields: [orgId], references: [id])
+
+  @@unique([orgId, type, value])
+  @@map("suppression_entries")
+}
+
+model WorkflowRun {
+  id          String            @id @default(cuid())
+  orgId       String
+  prospectId  String?
+  type        String            // full_pipeline | audit_only | report_only | outreach_only
+  status      WorkflowRunStatus @default(running)
+  steps       Json              @default("[]")
+  startedAt   DateTime          @default(now())
+  completedAt DateTime?
+  errorMessage String?
+
+  organization Organization @relation(fields: [orgId], references: [id])
+  prospect     Prospect?    @relation(fields: [prospectId], references: [id])
+
+  @@map("workflow_runs")
+}
+
+model AnalyticsEvent {
+  id         String   @id @default(cuid())
+  orgId      String
+  eventType  String
+  prospectId String?
+  emailId    String?
+  data       Json?
+  createdAt  DateTime @default(now())
+
+  @@index([orgId, eventType, createdAt])
+  @@map("analytics_events")
+}

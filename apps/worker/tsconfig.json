@@ -1,0 +1,16 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "node20",
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "outDir": "./dist",
+    "paths": {
+      "@vantage/config": ["../../packages/config/src/index.ts"],
+      "@vantage/database": ["../../packages/database/src/index.ts"],
+      "@vantage/queue": ["../../packages/queue/src/index.ts"],
+      "@vantage/shared": ["../../packages/shared/src/index.ts"]
+    }
+  },
+  "include": ["src", "../../packages/config/src", "../../packages/database/src", "../../packages/queue/src", "../../packages/shared/src"]
+}
