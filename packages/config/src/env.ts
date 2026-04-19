@@ -23,9 +23,11 @@ const envSchema = z.object({
   R2_BUCKET_NAME: z.string().min(1, 'R2 bucket name required'),
   R2_PUBLIC_URL: z.string().url('R2 public URL required'),
 
-  // Resend
-  RESEND_API_KEY: z.string().min(1, 'Resend API key required'),
-  RESEND_WEBHOOK_SECRET: z.string().min(1, 'Resend webhook secret required'),
+  // Microsoft 365 (Graph API — used for outreach email sending)
+  M365_TENANT_ID: z.string().min(1, 'M365 tenant ID required'),
+  M365_CLIENT_ID: z.string().min(1, 'M365 client ID required'),
+  M365_CLIENT_SECRET: z.string().min(1, 'M365 client secret required'),
+  M365_FROM_EMAIL: z.string().email('M365 from email must be a valid email'),
 
   // Anthropic
   ANTHROPIC_API_KEY: z.string().min(1, 'Anthropic API key required'),

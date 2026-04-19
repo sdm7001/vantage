@@ -2,7 +2,7 @@ import { prisma } from '@vantage/database';
 import type { OutreachInitialJobData } from '@vantage/queue';
 import { runOutreachCopyAgent } from '../agents/outreach-copy.agent';
 import { runQaGuardrails } from '../agents/qa-guardrails.agent';
-import { sendEmail } from '../lib/resend';
+import { sendEmail } from '../lib/mailer';
 import { getEnv } from '@vantage/config';
 
 export async function outreachInitialProcessor(data: OutreachInitialJobData): Promise<void> {
@@ -97,18 +97,13 @@ export async function outreachInitialProcessor(data: OutreachInitialJobData): Pr
   const footer = `<br/><br/><p style="font-size:11px;color:#999">To unsubscribe, <a href="${unsubUrl}">click here</a>.</p>`;
   const finalHtml = emailDraft.htmlBody + trackingPixel + footer;
 
-  // Send via Resend
-  const { id: resendId } = await sendEmail({
-    from: `"${senderName}" <${senderEmail}>`,
+  const { conversationId: msgId } = await sendEmail({
+    fromName: senderName,
+    fromEmail: senderEmail,
     to: contact.email,
     subject: emailDraft.subject,
     html: finalHtml,
     text: emailDraft.textBody,
-    tags: [
-      { name: 'orgId', value: orgId },
-      { name: 'prospectId', value: prospectId },
-      { name: 'emailId', value: emailId },
-    ],
   });
 
   const now = new Date();
@@ -116,7 +111,7 @@ export async function outreachInitialProcessor(data: OutreachInitialJobData): Pr
   await prisma.$transaction([
     prisma.email.update({
       where: { id: emailId },
-      data: { resendMessageId: resendId, status: 'sent', sentAt: now, subject: emailDraft.subject, htmlBody: finalHtml },
+      data: { resendMessageId: msgId, status: 'sent', sentAt: now, subject: emailDraft.subject, htmlBody: finalHtml },
     }),
     prisma.outreachThread.update({
       where: { id: threadId },
@@ -137,5 +132,5 @@ export async function outreachInitialProcessor(data: OutreachInitialJobData): Pr
     }),
   ]);
 
-  console.log(`Initial outreach sent to ${contact.email} (resend: ${resendId})`);
+  console.log(`Initial outreach sent to ${contact.email} (conv: ${msgId})`);
 }

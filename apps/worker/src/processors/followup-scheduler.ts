@@ -2,6 +2,7 @@ import { prisma } from '@vantage/database';
 import { Queue } from 'bullmq';
 import { QUEUE_NAMES, JOB_OPTIONS } from '@vantage/queue';
 import { getRedis } from '../lib/redis';
+import { checkForReplies } from '../lib/reply-checker';
 
 // BullMQ cron: runs every 15 minutes
 // Finds threads due for next followup and enqueues them
@@ -25,6 +26,9 @@ export async function runFollowupScheduler(): Promise<void> {
     },
     take: 50, // process up to 50 per tick
   });
+
+  // Check M365 inbox for replies to previously sent emails
+  await checkForReplies().catch(err => console.error('[scheduler] reply-check failed:', err));
 
   if (dueThreads.length === 0) return;
 

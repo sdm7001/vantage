@@ -1,7 +1,7 @@
 import { headers } from 'next/headers';
 import { Webhook } from 'svix';
 import { prisma } from '@vantage/database';
-import { getEnv } from '@vantage/config';
+
 
 type ResendWebhookEvent = {
   type: string;
@@ -15,7 +15,10 @@ type ResendWebhookEvent = {
 };
 
 export async function POST(req: Request) {
-  const env = getEnv();
+  // Not used when sending via Microsoft 365 — reply/open tracking is handled
+  // by the pixel endpoint and the Graph API poller in the worker.
+  const secret = process.env.RESEND_WEBHOOK_SECRET;
+  if (!secret) return new Response('Resend webhooks not configured', { status: 200 });
   const body = await req.text();
   const headersList = await headers();
 
@@ -29,7 +32,7 @@ export async function POST(req: Request) {
 
   let event: ResendWebhookEvent;
   try {
-    const wh = new Webhook(env.RESEND_WEBHOOK_SECRET);
+    const wh = new Webhook(secret);
     event = wh.verify(body, {
       'svix-id': svixId,
       'svix-timestamp': svixTimestamp,

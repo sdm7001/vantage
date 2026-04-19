@@ -1,7 +1,7 @@
 import { prisma } from '@vantage/database';
 import type { OutreachFollowupJobData } from '@vantage/queue';
 import { runFollowupCopyAgent } from '../agents/followup-copy.agent';
-import { sendEmail } from '../lib/resend';
+import { sendEmail } from '../lib/mailer';
 import { getEnv } from '@vantage/config';
 
 const FOLLOWUP_STATE_MAP: Record<number, string> = {
@@ -78,16 +78,13 @@ export async function outreachFollowupProcessor(data: OutreachFollowupJobData): 
   const trackingPixel = `<img src="${appUrl}/api/track/${emailId}.gif" width="1" height="1" style="display:none" alt="" />`;
   const finalHtml = emailDraft.htmlBody + trackingPixel + footer;
 
-  const { id: resendId } = await sendEmail({
-    from: `"${senderName}" <${senderEmail}>`,
+  const { conversationId: msgId } = await sendEmail({
+    fromName: senderName,
+    fromEmail: senderEmail,
     to: contact.email,
     subject: emailDraft.subject,
     html: finalHtml,
     text: emailDraft.textBody,
-    tags: [
-      { name: 'orgId', value: orgId },
-      { name: 'emailId', value: emailId },
-    ],
   });
 
   const now = new Date();
@@ -98,7 +95,7 @@ export async function outreachFollowupProcessor(data: OutreachFollowupJobData): 
   await prisma.$transaction([
     prisma.email.update({
       where: { id: emailId },
-      data: { resendMessageId: resendId, status: 'sent', sentAt: now, subject: emailDraft.subject, htmlBody: finalHtml },
+      data: { resendMessageId: msgId, status: 'sent', sentAt: now, subject: emailDraft.subject, htmlBody: finalHtml },
     }),
     prisma.outreachThread.update({
       where: { id: threadId },
