@@ -50,18 +50,26 @@ export const outreachRouter = router({
 
       if (!prospect.reports[0]) throw new TRPCError({ code: 'BAD_REQUEST', message: 'No completed report — run audit and report generation first' });
 
-      // Create or find thread
-      const thread = await ctx.prisma.outreachThread.upsert({
-        where: { prospectId_campaignId: { prospectId: input.prospectId, campaignId: input.campaignId ?? null } },
-        update: { state: 'APPROVED', approvedAt: new Date(), approvedBy: ctx.userId },
-        create: {
-          prospectId: input.prospectId,
-          campaignId: input.campaignId ?? null,
-          state: 'INITIAL_QUEUED',
-          approvedAt: new Date(),
-          approvedBy: ctx.userId,
-        },
+      // Find or create thread — explicit findFirst avoids MySQL NULL unique index issues
+      let thread = await ctx.prisma.outreachThread.findFirst({
+        where: { prospectId: input.prospectId, campaignId: input.campaignId ?? null },
       });
+      if (thread) {
+        thread = await ctx.prisma.outreachThread.update({
+          where: { id: thread.id },
+          data: { state: 'APPROVED', approvedAt: new Date(), approvedBy: ctx.userId },
+        });
+      } else {
+        thread = await ctx.prisma.outreachThread.create({
+          data: {
+            prospectId: input.prospectId,
+            campaignId: input.campaignId ?? null,
+            state: 'INITIAL_QUEUED',
+            approvedAt: new Date(),
+            approvedBy: ctx.userId,
+          },
+        });
+      }
 
       // Create email record
       const emailRecord = await ctx.prisma.email.create({

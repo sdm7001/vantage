@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
+  provider = "mysql"
   url      = env("DATABASE_URL")
 }
 
@@ -80,8 +80,8 @@ enum WorkflowRunStatus {
 
 model Organization {
   id          String   @id @default(cuid())
-  clerkOrgId  String   @unique
-  name        String
+  clerkOrgId  String   @unique @db.VarChar(191)
+  name        String   @db.VarChar(191)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -98,10 +98,10 @@ model Organization {
 
 model User {
   id           String   @id @default(cuid())
-  clerkUserId  String   @unique
+  clerkUserId  String   @unique @db.VarChar(191)
   orgId        String
-  email        String
-  name         String?
+  email        String   @db.VarChar(191)
+  name         String?  @db.VarChar(191)
   createdAt    DateTime @default(now())
 
   organization Organization @relation(fields: [orgId], references: [id])
@@ -112,14 +112,14 @@ model User {
 model BrandConfig {
   id              String  @id @default(cuid())
   orgId           String  @unique
-  companyName     String  @default("TexMG")
-  senderName      String  @default("Scott")
-  senderEmail     String  @default("scott@texmg.com")
-  bookingUrl      String?
-  logoR2Key       String?
-  primaryColor    String  @default("#1a1a2e")
-  accentColor     String  @default("#3b82f6")
-  companyAddress  String?
+  companyName     String  @default("TexMG") @db.VarChar(191)
+  senderName      String  @default("Scott") @db.VarChar(191)
+  senderEmail     String  @default("scott@texmg.com") @db.VarChar(191)
+  bookingUrl      String? @db.Text
+  logoR2Key       String? @db.VarChar(191)
+  primaryColor    String  @default("#1a1a2e") @db.VarChar(20)
+  accentColor     String  @default("#3b82f6") @db.VarChar(20)
+  companyAddress  String? @db.VarChar(500)
   updatedAt       DateTime @updatedAt
 
   organization Organization @relation(fields: [orgId], references: [id])
@@ -132,16 +132,16 @@ model BrandConfig {
 model Prospect {
   id           String          @id @default(cuid())
   orgId        String
-  domain       String
-  companyName  String?
-  industry     String?
-  city         String?
-  state        String?
-  website      String?
+  domain       String          @db.VarChar(191)
+  companyName  String?         @db.VarChar(191)
+  industry     String?         @db.VarChar(191)
+  city         String?         @db.VarChar(191)
+  state        String?         @db.VarChar(100)
+  website      String?         @db.VarChar(191)
   status       ProspectStatus  @default(NEW)
   icpScore     Int?
-  notes        String?
-  sourceType   String?         // csv | manual | sourcing_agent
+  notes        String?         @db.Text
+  sourceType   String?         @db.VarChar(50)
   createdAt    DateTime        @default(now())
   updatedAt    DateTime        @updatedAt
 
@@ -161,15 +161,15 @@ model Prospect {
 model Contact {
   id             String   @id @default(cuid())
   prospectId     String
-  firstName      String?
-  lastName       String?
-  email          String?
-  title          String?
-  linkedinUrl    String?
-  phone          String?
+  firstName      String?  @db.VarChar(191)
+  lastName       String?  @db.VarChar(191)
+  email          String?  @db.VarChar(191)
+  title          String?  @db.VarChar(191)
+  linkedinUrl    String?  @db.Text
+  phone          String?  @db.VarChar(50)
   isPrimary      Boolean  @default(false)
   emailVerified  Boolean  @default(false)
-  emailSource    String?  // manual | enriched | guessed
+  emailSource    String?  @db.VarChar(50)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -184,13 +184,13 @@ model Contact {
 model WebsiteAudit {
   id            String   @id @default(cuid())
   prospectId    String
-  triggeredBy   String?  // userId or "system"
-  domain        String
-  crawlDataKey  String?  // R2 key for raw crawl bundle JSON
-  screenshotKey String?  // R2 key for homepage screenshot
+  triggeredBy   String?  @db.VarChar(191)
+  domain        String   @db.VarChar(191)
+  crawlDataKey  String?  @db.VarChar(191)
+  screenshotKey String?  @db.VarChar(191)
   overallScore  Int?
-  status        String   @default("pending") // pending | crawling | evaluating | completed | failed
-  errorMessage  String?
+  status        String   @default("pending") @db.VarChar(50)
+  errorMessage  String?  @db.Text
   crawledAt     DateTime?
   evaluatedAt   DateTime?
   createdAt     DateTime @default(now())
@@ -206,12 +206,12 @@ model WebsiteAudit {
 model AuditDimensionScore {
   id            String   @id @default(cuid())
   auditId       String
-  category      String   // ux_cro | visual_design | seo | geo_ai | content
-  dimension     String   // e.g. "cta_visibility", "title_meta_optimization"
-  score         Int      // 0-10
+  category      String   @db.VarChar(50)
+  dimension     String   @db.VarChar(100)
+  score         Int
   wins          Json     @default("[]")
   criticalFixes Json     @default("[]")
-  notes         String?
+  notes         String?  @db.Text
 
   audit WebsiteAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
 
@@ -223,11 +223,11 @@ model AuditRecommendation {
   id          String                 @id @default(cuid())
   auditId     String
   priority    RecommendationPriority
-  title       String
-  description String
-  effort      String                 // low | medium | high
-  impact      String                 // low | medium | high
-  category    String
+  title       String                 @db.VarChar(191)
+  description String                 @db.Text
+  effort      String                 @db.VarChar(20)
+  impact      String                 @db.VarChar(20)
+  category    String                 @db.VarChar(50)
 
   audit WebsiteAudit @relation(fields: [auditId], references: [id], onDelete: Cascade)
 
@@ -240,14 +240,14 @@ model ProspectReport {
   id              String   @id @default(cuid())
   prospectId      String
   auditId         String
-  publicToken     String   @unique @default(cuid())
-  pdfKey          String?  // R2 key
-  pdfUrl          String?  // signed URL (expires)
-  markdownContent String?
+  publicToken     String   @unique @default(cuid()) @db.VarChar(191)
+  pdfKey          String?  @db.VarChar(191)
+  pdfUrl          String?  @db.Text
+  markdownContent String?  @db.MediumText
   jsonContent     Json?
   viewCount       Int      @default(0)
-  status          String   @default("generating") // generating | ready | failed
-  errorMessage    String?
+  status          String   @default("generating") @db.VarChar(50)
+  errorMessage    String?  @db.Text
   generatedAt     DateTime?
   createdAt       DateTime @default(now())
 
@@ -257,14 +257,14 @@ model ProspectReport {
   @@map("prospect_reports")
 }
 
-// ─── Intelligence ─────────────────────────────────────────────────────────────
+// ─── Intelligence ────────────────────────────────────────────────────���────────
 
 model InternalBrief {
   id               String   @id @default(cuid())
   prospectId       String
   auditId          String?
-  markdownContent  String
-  appointmentAngle String?
+  markdownContent  String   @db.MediumText
+  appointmentAngle String?  @db.Text
   createdAt        DateTime @default(now())
 
   prospect Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
@@ -276,7 +276,7 @@ model PainPointAnalysis {
   id                String   @id @default(cuid())
   prospectId        String
   auditId           String?
-  primaryPainPoint  String?
+  primaryPainPoint  String?  @db.Text
   outreachAngles    Json     @default("[]")
   valueHooks        Json     @default("[]")
   createdAt         DateTime @default(now())
@@ -291,8 +291,8 @@ model PainPointAnalysis {
 model Campaign {
   id              String   @id @default(cuid())
   orgId           String
-  name            String
-  status          String   @default("active") // active | paused | archived
+  name            String   @db.VarChar(191)
+  status          String   @default("active") @db.VarChar(50)
   dailyNewLimit   Int      @default(10)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -306,22 +306,24 @@ model Campaign {
 model OutreachThread {
   id            String        @id @default(cuid())
   prospectId    String
-  campaignId    String?
+  campaignId    String?       @db.VarChar(191)
   state         OutreachState @default(PENDING)
-  currentStep   Int           @default(0) // 0=initial, 1-4=followup
+  currentStep   Int           @default(0)
   nextActionAt  DateTime?
   approvedAt    DateTime?
-  approvedBy    String?
+  approvedBy    String?       @db.VarChar(191)
   pausedAt      DateTime?
-  pausedReason  String?
+  pausedReason  String?       @db.Text
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
-  prospect Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  prospect Prospect  @relation(fields: [prospectId], references: [id], onDelete: Cascade)
   campaign Campaign? @relation(fields: [campaignId], references: [id])
   emails   Email[]
 
-  @@unique([prospectId, campaignId])
+  // Note: MySQL treats NULL as distinct in unique indexes, so we use @@index here
+  // and enforce the one-thread-per-prospect logic in the application layer.
+  @@index([prospectId, campaignId])
   @@map("outreach_threads")
 }
 
@@ -329,16 +331,16 @@ model Email {
   id              String   @id @default(cuid())
   threadId        String
   contactId       String
-  resendMessageId String?  @unique
-  sequenceIndex   Int      // 0=initial, 1-4=followup
-  subject         String
-  htmlBody        String
-  textBody        String?
-  fromName        String
-  fromEmail       String
-  status          String   @default("draft") // draft | queued | sent | failed
+  resendMessageId String?  @unique @db.VarChar(191)
+  sequenceIndex   Int
+  subject         String   @db.VarChar(500)
+  htmlBody        String   @db.LongText
+  textBody        String?  @db.MediumText
+  fromName        String   @db.VarChar(191)
+  fromEmail       String   @db.VarChar(191)
+  status          String   @default("draft") @db.VarChar(50)
   sentAt          DateTime?
-  errorMessage    String?
+  errorMessage    String?  @db.Text
   createdAt       DateTime @default(now())
 
   thread  OutreachThread @relation(fields: [threadId], references: [id], onDelete: Cascade)
@@ -352,9 +354,9 @@ model EmailEvent {
   id        String         @id @default(cuid())
   emailId   String
   type      EmailEventType
-  url       String?        // for click events
-  ipAddress String?
-  userAgent String?
+  url       String?        @db.Text
+  ipAddress String?        @db.VarChar(45)
+  userAgent String?        @db.Text
   data      Json?
   createdAt DateTime       @default(now())
 
@@ -368,7 +370,7 @@ model EmailEvent {
 model DailyEmailLimit {
   id              String   @id @default(cuid())
   orgId           String
-  date            String   // YYYY-MM-DD
+  date            String   @db.VarChar(10)
   newOutboundSent Int      @default(0)
 
   organization Organization @relation(fields: [orgId], references: [id])
@@ -381,8 +383,8 @@ model SuppressionEntry {
   id        String          @id @default(cuid())
   orgId     String
   type      SuppressionType
-  value     String          // email address or domain
-  reason    String?
+  value     String          @db.VarChar(191)
+  reason    String?         @db.Text
   createdAt DateTime        @default(now())
 
   organization Organization @relation(fields: [orgId], references: [id])
@@ -392,15 +394,15 @@ model SuppressionEntry {
 }
 
 model WorkflowRun {
-  id          String            @id @default(cuid())
-  orgId       String
-  prospectId  String?
-  type        String            // full_pipeline | audit_only | report_only | outreach_only
-  status      WorkflowRunStatus @default(running)
-  steps       Json              @default("[]")
-  startedAt   DateTime          @default(now())
-  completedAt DateTime?
-  errorMessage String?
+  id           String            @id @default(cuid())
+  orgId        String
+  prospectId   String?
+  type         String            @db.VarChar(50)
+  status       WorkflowRunStatus @default(running)
+  steps        Json              @default("[]")
+  startedAt    DateTime          @default(now())
+  completedAt  DateTime?
+  errorMessage String?           @db.Text
 
   organization Organization @relation(fields: [orgId], references: [id])
   prospect     Prospect?    @relation(fields: [prospectId], references: [id])
@@ -411,7 +413,7 @@ model WorkflowRun {
 model AnalyticsEvent {
   id         String   @id @default(cuid())
   orgId      String
-  eventType  String
+  eventType  String   @db.VarChar(100)
   prospectId String?
   emailId    String?
   data       Json?
