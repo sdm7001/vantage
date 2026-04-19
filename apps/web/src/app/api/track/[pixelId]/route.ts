@@ -9,7 +9,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ pixe
   const emailId = pixelId.replace('.gif', '');
 
   // Non-blocking — don't slow down the response
-  prisma.email.findFirst({ where: { id: emailId } }).then(email => {
+  prisma.email.findFirst({ where: { id: emailId } }).then((email: { id: string } | null) => {
     if (!email) return;
     prisma.emailEvent.create({
       data: {

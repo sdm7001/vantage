@@ -7,6 +7,8 @@ import { auditEvaluateProcessor } from './processors/audit-evaluate.processor';
 import { reportProcessor } from './processors/report.processor';
 import { outreachInitialProcessor } from './processors/outreach-initial.processor';
 import { outreachFollowupProcessor } from './processors/outreach-followup.processor';
+import { workflowProcessor } from './processors/workflow.processor';
+import { enrichProcessor } from './processors/enrich.processor';
 import { runFollowupScheduler } from './processors/followup-scheduler';
 
 const env = getEnv(); // Validates env on startup — fails fast if missing vars
@@ -32,11 +34,13 @@ function makeWorker<T>(queueName: string, processor: (data: T) => Promise<void>)
 
 // Start all workers
 const workers = [
+  makeWorker(QUEUE_NAMES.PROSPECT_ENRICH, enrichProcessor),
   makeWorker(QUEUE_NAMES.AUDIT_CRAWL, auditCrawlProcessor),
   makeWorker(QUEUE_NAMES.AUDIT_EVALUATE, auditEvaluateProcessor),
   makeWorker(QUEUE_NAMES.REPORT_GENERATE, reportProcessor),
   makeWorker(QUEUE_NAMES.OUTREACH_INITIAL, outreachInitialProcessor),
   makeWorker(QUEUE_NAMES.OUTREACH_FOLLOWUP, outreachFollowupProcessor),
+  makeWorker(QUEUE_NAMES.WORKFLOW_ORCHESTRATE, workflowProcessor),
 ];
 
 // Follow-up scheduler: runs every 15 minutes
