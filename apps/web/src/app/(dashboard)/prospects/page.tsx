@@ -149,7 +149,7 @@ export default function ProspectsPage() {
               </tr>
             </thead>
             <tbody>
-              {(prospects as Array<{ id: string; domain: string; companyName?: string | null; status: string; contacts: unknown[]; _count: unknown }>).map(p => {
+              {(prospects as unknown as Array<{ id: string; domain: string; companyName?: string | null; status: string; contacts: unknown[]; _count: unknown }>).map(p => {
                 const colors = STATUS_COLORS[p.status] ?? STATUS_COLORS.NEW;
                 const contact = (p.contacts as Array<{ firstName: string | null; lastName: string | null; email: string | null }>)[0];
                 const counts = p._count as { audits: number; reports: number };
