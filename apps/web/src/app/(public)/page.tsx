@@ -4,778 +4,443 @@ import AttributionTracker from './AttributionTracker';
 const BOOKING_URL = process.env.NEXT_PUBLIC_BOOKING_URL ?? 'https://calendly.com/texmg';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
-
 const T = {
-  dark:    '#0f172a',
-  deep:    '#0a1122',
-  card:    '#111d35',
-  border:  '#1e293b',
-  blue:    '#1565C0',   // TMG brand blue — buttons, strong accents
-  blueSft: '#4a9fd4',   // readable on dark — text highlights
-  txtPri:  '#ffffff',
-  txtSec:  '#94a3b8',
+  navy:    '#0f172a',
+  navyMid: '#1e293b',
+  blue:    '#1565C0',
+  blueSft: '#4a9fd4',
+  white:   '#ffffff',
+  offWhite:'#f8fafc',
+  border:  '#e2e8f0',
+  txtPri:  '#0f172a',
+  txtSec:  '#475569',
   txtMid:  '#64748b',
-  txtDim:  '#475569',
-  txtFade: '#334155',
+  txtFade: '#94a3b8',
 };
 
-// ─── Content ──────────────────────────────────────────────────────────────────
+// ─── Helper components ─────────────────────────────────────────────────────────
+const Eyebrow = ({ text, light = false }: { text: string; light?: boolean }) => (
+  <div style={{ fontSize: '11px', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' as const, color: light ? '#4a9fd4' : T.blue, marginBottom: '14px' }}>
+    {text}
+  </div>
+);
 
+// ─── Data ─────────────────────────────────────────────────────────────────────
 const PROBLEMS = [
-  {
-    label: 'Weak messaging',
-    detail: 'Value propositions that don\'t resonate with buyers. Features listed, benefits buried. No clear reason to choose you over the competitor three links down.',
-  },
-  {
-    label: 'Poor SEO foundation',
-    detail: 'Missing schema, duplicate tags, thin pages, no local authority signals. Search engines aren\'t indexing your best work — because they can\'t find it.',
-  },
-  {
-    label: 'Low trust signals',
-    detail: 'Outdated design, stock photography, no credentials visible. First impressions determine whether a visitor reads further or bounces.',
-  },
-  {
-    label: 'Not AI-search ready',
-    detail: 'Competitors are getting cited by ChatGPT and Perplexity. If your content isn\'t structured for AI readability, you\'re invisible to the next generation of search.',
-  },
-];
-
-const CATEGORIES = [
-  {
-    name: 'Content & Messaging',
-    weight: '25%',
-    findings: [
-      'Value proposition buried below the fold',
-      'No clear problem-solution framing',
-      'Benefits hidden behind feature lists',
-    ],
-  },
-  {
-    name: 'UX / Conversion',
-    weight: '20%',
-    findings: [
-      'Primary CTA invisible on mobile',
-      'Contact form with too many required fields',
-      'No social proof near conversion points',
-    ],
-  },
-  {
-    name: 'SEO Health',
-    weight: '20%',
-    findings: [
-      'Missing or duplicate title tags',
-      'No local business schema markup',
-      'Internal links send no authority to key pages',
-    ],
-  },
-  {
-    name: 'Visual Design',
-    weight: '15%',
-    findings: [
-      'Inconsistent typography across pages',
-      'Generic stock photography reduces credibility',
-      'Layout patterns last updated circa 2018',
-    ],
-  },
-  {
-    name: 'GEO / AI Search',
-    weight: '15%',
-    findings: [
-      'No FAQ content for voice and AI search',
-      'Weak E-E-A-T signals — author credentials missing',
-      'Not structured for ChatGPT or Perplexity citation',
-    ],
-  },
-  {
-    name: 'Critical Issues',
-    weight: 'penalty',
-    findings: [
-      'Broken links on core navigation',
-      'Pages returning 404 with no redirect',
-      'Missing mobile viewport configuration',
-    ],
-  },
+  { icon: '🏚', title: 'Outdated design', body: 'A dated site signals neglect. First impressions drive buying decisions before a visitor reads a single word.' },
+  { icon: '📢', title: 'Weak messaging', body: 'Features listed, benefits buried. Visitors leave when they cannot quickly understand why you are the right choice.' },
+  { icon: '📱', title: 'Poor mobile UX', body: 'Over 60% of business searches happen on mobile. A broken mobile experience loses leads before you know they existed.' },
+  { icon: '📉', title: 'Low conversion', body: 'Traffic without conversion is expensive noise. Buried CTAs, too many form fields, and absent social proof kill outcomes.' },
+  { icon: '🔍', title: 'Weak SEO foundation', body: 'Missing schema, thin pages, no local authority. Search engines cannot rank what they struggle to understand.' },
+  { icon: '🤖', title: 'Not AI-search ready', body: 'ChatGPT, Perplexity, and Google AI Overviews are changing how buyers find vendors. Unstructured content gets ignored.' },
 ];
 
 const SERVICES = [
-  {
-    name: 'Website Redesign',
-    tagline: 'A site that converts, not just looks good.',
-    points: [
-      'Built from audit findings — fixes real problems, not cosmetic ones',
-      'Conversion-optimized layouts with clear CTAs and trust signals',
-      'Fast, mobile-first — 90+ Core Web Vitals score guaranteed',
-      'Content strategy included: value props, FAQs, service pages',
-    ],
-  },
-  {
-    name: 'SEO & Local Authority',
-    tagline: 'Rank for searches your buyers actually make.',
-    points: [
-      'Technical SEO remediation — title tags, schema, site architecture',
-      'Local SEO for Houston and target markets: GMB, citations',
-      'Content gaps filled: blog posts, service pages, FAQ clusters',
-      'Monthly reporting with keyword rank tracking',
-    ],
-  },
-  {
-    name: 'GEO / AI Search Optimization',
-    tagline: 'Get cited by ChatGPT, Perplexity, and Google AI Overviews.',
-    points: [
-      'Structured data: FAQ, How-To, Organization, LocalBusiness',
-      'E-E-A-T signals: author bios, credentials, trust indicators',
-      'Content reformatted for AI readability and citation likelihood',
-      'Tracked across AI platforms — not just Google',
-    ],
-  },
+  { title: 'Website Review', body: 'A scored, structured analysis of your site across six dimensions — not a generic checklist, a real evaluation specific to your business.' },
+  { title: 'Redesign Strategy', body: 'Prioritized recommendations for layout, messaging, visual design, and UX based on what actually moves conversions for your industry.' },
+  { title: 'SEO Recommendations', body: 'Technical and content SEO gaps identified and ranked. From meta tags and schema to internal linking and local authority signals.' },
+  { title: 'GEO / AI-Search Optimization', body: 'Content structure and formatting recommendations to improve visibility in ChatGPT, Perplexity, and Google AI Overviews.' },
+  { title: 'Conversion Optimization', body: 'CTA placement, trust signals, form friction — a focused review of where visitors are dropping off and exactly why.' },
+  { title: 'Consultation & Action Plan', body: 'A one-on-one call to walk through findings, answer questions, and agree on a realistic path forward for your site.' },
 ];
 
-const FAQS = [
+const FAQ_ITEMS = [
   {
-    q: 'You already audited my site — what did you find?',
-    a: 'We ran your site through our 36-dimension evaluation across content, UX, SEO, visual design, and AI search readiness. The full report is available — just reply to the email we sent, or book a call and we\'ll walk through the findings with you.',
+    q: 'Why did you reach out to my business?',
+    a: 'We proactively review websites for businesses in your area and industry. When we identify meaningful improvement opportunities in design, SEO, or AI-search readiness — we reach out. If you received outreach from TMG, it means we completed a real review of your site before contacting you.',
   },
   {
-    q: 'Is the audit report free?',
-    a: 'Yes. We send the full branded PDF report at no charge, regardless of whether you hire us. If the findings are useful, great — if you want help fixing them, we can talk.',
+    q: 'What happens in the consultation?',
+    a: 'We walk through the specific findings from your website review. You see exactly what we found, why it matters, and what we recommend. There is no sales pressure — the goal is to give you a clear picture of where your site stands and what improvement would realistically do for your business.',
   },
   {
-    q: 'How long does a website redesign take?',
-    a: 'Most projects: 4–6 weeks from kickoff to launch. We move fast because we start with your audit — we already know what to fix before day one.',
+    q: 'What is GEO / AI-search optimization?',
+    a: 'GEO (Generative Engine Optimization) is about making your content visible and quotable in AI tools like ChatGPT, Perplexity, and Google AI Overviews. Increasingly, buyers use these tools instead of traditional Google. If your site is not structured for AI readability, you are invisible to that audience.',
   },
   {
-    q: 'Do you work with businesses outside Houston?',
-    a: 'Yes. Most clients are Houston-area but we take on projects nationwide. Local SEO campaigns are strongest for companies serving a defined geographic market.',
+    q: 'Is the review customized for my site?',
+    a: 'Yes. We evaluate your specific website across six dimensions: messaging and content, UX and conversion, SEO health, visual design, GEO/AI-search readiness, and critical technical issues. Every finding is based on your site — not a generic template.',
   },
   {
-    q: 'What does GEO optimization cost?',
-    a: 'Pricing depends on site size and competitive landscape. Most GEO engagements start around $1,500/month with a 3-month minimum. We\'ll give you a fixed quote on the call.',
+    q: 'Do you work with local and service-based businesses?',
+    a: 'Yes. Most of our clients are local and regional service businesses — contractors, healthcare providers, professional services, retail, and specialty industries. We understand what works for businesses that serve a specific geography or community.',
   },
   {
-    q: 'How is TMG different from other agencies?',
-    a: 'We lead with evidence. Before pitching anything, we audit your site and show you exactly what\'s broken. No hypotheticals, no feature lists — just a scored report with specific, prioritized fixes.',
+    q: 'What does a redesign or optimization engagement look like?',
+    a: 'It starts with a consultation. If there is a fit, we scope an engagement based on what your site actually needs. Some clients need a full redesign, others need targeted SEO or GEO work. We scope specifically for your situation — not a one-size package.',
   },
 ];
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
-
 export default function LandingPage() {
   return (
-    <main style={{ fontFamily: 'system-ui, -apple-system, sans-serif', background: T.dark, color: T.txtPri }}>
+    <div style={{ fontFamily: 'system-ui, -apple-system, BlinkMacSystemFont, sans-serif', background: T.white, color: T.txtPri }}>
       <AttributionTracker />
 
-      {/* ── Navigation ──────────────────────────────────────────────────────── */}
-      <nav style={{
-        padding: '0 48px',
-        height: '58px',
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        borderBottom: `1px solid ${T.border}`,
-        position: 'sticky',
-        top: 0,
-        background: 'rgba(15,23,42,0.97)',
-        backdropFilter: 'blur(8px)',
-        zIndex: 100,
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      <header style={{ background: T.navy, borderBottom: '1px solid #1e293b', position: 'sticky', top: 0, zIndex: 100 }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '64px' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/tmg-logo.svg" alt="TMG" style={{ height: '27px', width: 'auto' }} />
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
-          <div style={{ display: 'flex', gap: '24px' }}>
-            {[
-              { label: 'Process', href: '#process' },
-              { label: 'Services', href: '#services' },
-              { label: 'About', href: '#about' },
-              { label: 'FAQ', href: '#faq' },
-            ].map(({ label, href }) => (
-              <a key={label} href={href} style={{
-                fontSize: '13px',
-                color: T.txtMid,
-                textDecoration: 'none',
-                fontWeight: 500,
-                transition: 'color 0.15s',
-              }}>
-                {label}
-              </a>
-            ))}
-          </div>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            <Link href="/sign-in" style={{
-              fontSize: '13px',
-              color: T.txtSec,
-              textDecoration: 'none',
-              fontWeight: 600,
-              padding: '6px 14px',
-              borderRadius: '6px',
-              border: `1px solid ${T.border}`,
-            }}>
+          <img src="/tmg-logo.svg" alt="TMG" style={{ height: '28px', width: 'auto' }} />
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <a href="#how-it-works" style={{ color: '#94a3b8', fontSize: '13px', fontWeight: 500, textDecoration: 'none', padding: '6px 12px' }}>How it works</a>
+            <a href="#services" style={{ color: '#94a3b8', fontSize: '13px', fontWeight: 500, textDecoration: 'none', padding: '6px 12px' }}>Services</a>
+            <a href="#faq" style={{ color: '#94a3b8', fontSize: '13px', fontWeight: 500, textDecoration: 'none', padding: '6px 12px' }}>FAQ</a>
+            <a
+              href={BOOKING_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ background: T.blue, color: T.white, padding: '8px 18px', borderRadius: '6px', fontSize: '13px', fontWeight: 700, textDecoration: 'none', marginLeft: '8px' }}
+            >
+              Book a Consultation
+            </a>
+            <Link
+              href="/sign-in"
+              style={{ color: '#64748b', fontSize: '12px', textDecoration: 'none', padding: '6px 12px', border: '1px solid #334155', borderRadius: '6px', marginLeft: '4px' }}
+            >
               Login
             </Link>
-            <a href={BOOKING_URL} target="_blank" rel="noopener noreferrer" style={{
-              fontSize: '13px',
-              background: T.blue,
-              color: 'white',
-              padding: '7px 16px',
-              borderRadius: '6px',
-              textDecoration: 'none',
-              fontWeight: 700,
-            }}>
-              Book a Call
+          </div>
+        </div>
+      </header>
+
+      {/* ── Hero ────────────────────────────────────────────────────────────── */}
+      <section style={{ background: T.navy, padding: '96px 40px 80px' }}>
+        <div style={{ maxWidth: '780px', margin: '0 auto', textAlign: 'center' }}>
+          <div style={{ display: 'inline-block', background: '#0a1829', border: '1px solid #1e3a5f', borderRadius: '20px', padding: '6px 16px', fontSize: '12px', fontWeight: 600, color: T.blueSft, letterSpacing: '0.05em', marginBottom: '28px' }}>
+            Website Redesign · SEO · GEO / AI Search · Conversion
+          </div>
+          <h1 style={{ fontSize: '52px', fontWeight: 900, color: T.white, lineHeight: 1.1, margin: '0 0 20px', letterSpacing: '-0.02em' }}>
+            Your website should be<br />
+            <span style={{ color: T.blueSft }}>winning you business.</span>
+          </h1>
+          <p style={{ fontSize: '19px', color: '#94a3b8', lineHeight: 1.65, margin: '0 auto 40px', maxWidth: '600px' }}>
+            We identify what is holding your site back — weak messaging, missed SEO, AI-search gaps, and design that does not convert — and help you fix it.
+          </p>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            <a
+              href={BOOKING_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ background: T.blue, color: T.white, padding: '14px 32px', borderRadius: '8px', fontSize: '16px', fontWeight: 700, textDecoration: 'none' }}
+            >
+              Book a Free Consultation
+            </a>
+            <a
+              href="#how-it-works"
+              style={{ background: 'transparent', color: '#94a3b8', padding: '14px 32px', borderRadius: '8px', fontSize: '16px', fontWeight: 600, textDecoration: 'none', border: '1px solid #334155' }}
+            >
+              See How It Works
             </a>
           </div>
         </div>
-      </nav>
-
-      {/* ── Hero ────────────────────────────────────────────────────────────── */}
-      <section style={{ padding: '108px 48px 96px', maxWidth: '840px', margin: '0 auto', textAlign: 'center' }}>
-        <div style={{
-          fontSize: '10px',
-          fontWeight: 700,
-          letterSpacing: '2.5px',
-          textTransform: 'uppercase',
-          color: T.blueSft,
-          marginBottom: '30px',
-        }}>
-          Audit-First Website Intelligence
-        </div>
-        <h1 style={{
-          fontSize: '56px',
-          fontWeight: 800,
-          lineHeight: 1.07,
-          marginBottom: '26px',
-          letterSpacing: '-0.03em',
-          color: 'white',
-        }}>
-          Your website is losing<br />
-          business.{' '}
-          <span style={{ color: T.blueSft }}>
-            We&apos;ll show you<br />exactly why.
-          </span>
-        </h1>
-        <p style={{
-          fontSize: '17px',
-          color: T.txtSec,
-          maxWidth: '560px',
-          margin: '0 auto 44px',
-          lineHeight: 1.78,
-        }}>
-          TMG audits your website across 36 dimensions — content, UX, SEO, and AI search readiness.
-          You get a scored report with prioritized, specific fixes.
-          We build from evidence, not templates.
-        </p>
-        <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <a
-            href={BOOKING_URL}
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              background: T.blue,
-              color: 'white',
-              padding: '14px 36px',
-              borderRadius: '7px',
-              textDecoration: 'none',
-              fontWeight: 700,
-              fontSize: '15px',
-              letterSpacing: '-0.01em',
-            }}
-          >
-            Book a Free Strategy Call →
-          </a>
-          <Link href="/sign-in" style={{
-            background: 'transparent',
-            color: T.txtSec,
-            padding: '14px 28px',
-            borderRadius: '7px',
-            textDecoration: 'none',
-            fontWeight: 600,
-            fontSize: '15px',
-            border: `1px solid ${T.border}`,
-          }}>
-            Client Portal →
-          </Link>
-        </div>
       </section>
 
-      {/* ── Problem ─────────────────────────────────────────────────────────── */}
-      <section style={{
-        background: T.deep,
-        borderTop: `1px solid ${T.border}`,
-        borderBottom: `1px solid ${T.border}`,
-        padding: '76px 48px',
-      }}>
-        <div style={{ maxWidth: '860px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '28px', fontWeight: 700, textAlign: 'center', marginBottom: '10px' }}>
-            Most business websites share the same critical gaps
-          </h2>
-          <p style={{ color: T.txtMid, textAlign: 'center', fontSize: '15px', maxWidth: '480px', margin: '0 auto 52px', lineHeight: 1.65 }}>
-            Symptoms vary. Root causes are predictable — and fixable.
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '16px', maxWidth: '740px', margin: '0 auto' }}>
-            {PROBLEMS.map(item => (
-              <div key={item.label} style={{
-                background: T.card,
-                borderRadius: '9px',
-                padding: '22px 24px',
-                borderLeft: `3px solid ${T.blue}`,
-              }}>
-                <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '8px', color: 'white' }}>{item.label}</div>
-                <div style={{ fontSize: '13px', color: T.txtMid, lineHeight: 1.72 }}>{item.detail}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Process ─────────────────────────────────────────────────────────── */}
-      <section id="process" style={{ padding: '80px 48px' }}>
-        <div style={{ maxWidth: '800px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '10px' }}>
-            What we do before we ever reach out
-          </h2>
-          <p style={{ color: T.txtMid, fontSize: '15px', marginBottom: '52px', maxWidth: '500px', lineHeight: 1.65 }}>
-            We audit first. You get specific findings — not a generic pitch.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {[
-              {
-                n: '01',
-                title: 'We crawl your site',
-                sub: 'Playwright renders your pages like a real browser — JavaScript, dynamic content, mobile view — capturing screenshots and HTTP response data.',
-              },
-              {
-                n: '02',
-                title: 'Five AI agents evaluate in parallel',
-                sub: 'Separate agents score Content, UX/CRO, SEO, Visual Design, and GEO/AI Search — 36 dimensions total. Each agent is specialized for its category.',
-              },
-              {
-                n: '03',
-                title: 'Findings get weighted and ranked',
-                sub: 'Critical issues are penalized. P1 improvements are ranked by estimated impact. P2 refinements follow. Nothing is filler.',
-              },
-              {
-                n: '04',
-                title: 'A branded report is generated',
-                sub: 'Your report includes your actual score, dimension breakdowns, annotated screenshots, specific fixes, and a 90-day action plan.',
-              },
-              {
-                n: '05',
-                title: 'We write a personalized outreach email',
-                sub: 'The email references your specific issues by name — not a template. That\'s what you received if you found this page through our outreach.',
-              },
-            ].map((step, i, arr) => (
-              <div key={step.n} style={{
-                display: 'flex',
-                gap: '32px',
-                alignItems: 'flex-start',
-                padding: '28px 0',
-                borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : 'none',
-              }}>
-                <div style={{
-                  fontSize: '26px',
-                  fontWeight: 800,
-                  color: '#1e2f4a',
-                  letterSpacing: '-0.02em',
-                  minWidth: '40px',
-                  lineHeight: 1,
-                  paddingTop: '3px',
-                  fontVariantNumeric: 'tabular-nums',
-                }}>
-                  {step.n}
-                </div>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '15px', marginBottom: '6px', color: 'white' }}>{step.title}</div>
-                  <div style={{ fontSize: '13px', color: T.txtMid, lineHeight: 1.72, maxWidth: '620px' }}>{step.sub}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── What we evaluate ────────────────────────────────────────────────── */}
-      <section style={{
-        background: T.deep,
-        borderTop: `1px solid ${T.border}`,
-        borderBottom: `1px solid ${T.border}`,
-        padding: '80px 48px',
-      }}>
-        <div style={{ maxWidth: '860px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '28px', fontWeight: 700, textAlign: 'center', marginBottom: '10px' }}>
-            36 dimensions across six categories
-          </h2>
-          <p style={{ color: T.txtMid, textAlign: 'center', fontSize: '15px', maxWidth: '460px', margin: '0 auto 52px', lineHeight: 1.65 }}>
-            Every report covers all six. These are the patterns we find most often.
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '14px' }}>
-            {CATEGORIES.map(cat => (
-              <div key={cat.name} style={{
-                background: T.card,
-                borderRadius: '8px',
-                padding: '20px 20px',
-                borderTop: `2px solid ${T.blue}`,
-              }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '10px', gap: '8px' }}>
-                  <span style={{ fontWeight: 700, fontSize: '13px', color: 'white', lineHeight: 1.3 }}>{cat.name}</span>
-                  <span style={{
-                    fontSize: '10px',
-                    background: T.dark,
-                    color: T.txtDim,
-                    padding: '2px 7px',
-                    borderRadius: '4px',
-                    fontWeight: 700,
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.4px',
-                    flexShrink: 0,
-                  }}>
-                    {cat.weight}
-                  </span>
-                </div>
-                <ul style={{ margin: 0, padding: '0 0 0 13px' }}>
-                  {cat.findings.map(f => (
-                    <li key={f} style={{ fontSize: '11px', color: T.txtMid, lineHeight: 1.65, marginBottom: '3px' }}>{f}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Services ────────────────────────────────────────────────────────── */}
-      <section id="services" style={{ padding: '80px 48px' }}>
-        <div style={{ maxWidth: '860px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '10px' }}>
-            Three ways we fix it
-          </h2>
-          <p style={{ color: T.txtMid, fontSize: '15px', marginBottom: '52px', maxWidth: '480px', lineHeight: 1.65 }}>
-            Every engagement starts from your audit findings. We know what to fix before we start.
-          </p>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '18px' }}>
-            {SERVICES.map(svc => (
-              <div key={svc.name} style={{
-                background: T.card,
-                borderRadius: '10px',
-                padding: '26px 22px',
-                border: `1px solid ${T.border}`,
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '12px',
-              }}>
-                <div>
-                  <div style={{ fontWeight: 700, fontSize: '15px', color: 'white', marginBottom: '5px' }}>{svc.name}</div>
-                  <div style={{ fontSize: '12px', color: T.blueSft, lineHeight: 1.5 }}>{svc.tagline}</div>
-                </div>
-                <ul style={{ margin: 0, padding: '0 0 0 14px' }}>
-                  {svc.points.map(p => (
-                    <li key={p} style={{ fontSize: '12px', color: T.txtMid, lineHeight: 1.65, marginBottom: '5px' }}>{p}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── About / Why TMG ─────────────────────────────────────────────────── */}
-      <section id="about" style={{
-        background: T.deep,
-        borderTop: `1px solid ${T.border}`,
-        borderBottom: `1px solid ${T.border}`,
-        padding: '80px 48px',
-      }}>
-        <div style={{ maxWidth: '860px', margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '64px', alignItems: 'center' }}>
-            <div>
-              <div style={{ fontSize: '10px', fontWeight: 700, letterSpacing: '2px', textTransform: 'uppercase', color: T.blueSft, marginBottom: '16px' }}>
-                Why TMG
-              </div>
-              <h2 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '20px', lineHeight: 1.2 }}>
-                We lead with evidence.<br />Every time.
-              </h2>
-              <p style={{ color: T.txtMid, fontSize: '14px', lineHeight: 1.8, marginBottom: '18px' }}>
-                Most agencies pitch first and ask questions later. We audit before we contact anyone.
-                You get a complete picture of your site&apos;s strengths and weaknesses before a single dollar changes hands.
-              </p>
-              <p style={{ color: T.txtMid, fontSize: '14px', lineHeight: 1.8 }}>
-                TMG has served Texas businesses for over a decade —
-                website design, SEO, and now AI search optimization.
-                The same systematic, evidence-first approach applies to every engagement.
-              </p>
+      {/* ── Trust bar ───────────────────────────────────────────────────────── */}
+      <div style={{ background: '#f1f5f9', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', padding: '20px 40px' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'flex', gap: '40px', alignItems: 'center', justifyContent: 'center', flexWrap: 'wrap' }}>
+          {[
+            'Houston-based agency',
+            'AI-powered site review',
+            'Every review is site-specific',
+            'SEO + GEO + Conversion, not just design',
+          ].map(item => (
+            <div key={item} style={{ fontSize: '13px', color: T.txtSec, fontWeight: 500, display: 'flex', alignItems: 'center', gap: '6px' }}>
+              <span style={{ color: T.blue, fontWeight: 800 }}>✓</span> {item}
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Why you heard from us ────────────────────────────────────────────── */}
+      <section style={{ background: T.white, padding: '80px 40px' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '64px', alignItems: 'center' }}>
+          <div>
+            <Eyebrow text="Why we may have contacted you" />
+            <h2 style={{ fontSize: '32px', fontWeight: 800, color: T.txtPri, lineHeight: 1.2, margin: '0 0 16px' }}>
+              We review sites before we reach out — not after.
+            </h2>
+            <p style={{ fontSize: '17px', color: T.txtSec, lineHeight: 1.7, margin: '0 0 32px' }}>
+              If you received outreach from TMG, it is because we analyzed your website and identified specific improvement opportunities. We do not send mass campaigns to random lists. Our team uses a structured review process to evaluate your site before making contact.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
               {[
-                { value: '10+', label: 'Years in Houston', sub: 'Serving Texas-based businesses since 2013' },
-                { value: '36', label: 'Audit dimensions', sub: 'The most thorough website evaluation available' },
-                { value: '3×', label: 'Avg. reply rate lift', sub: 'vs. agencies that don\'t lead with findings' },
-              ].map(stat => (
-                <div key={stat.value} style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
-                  <div style={{ fontSize: '30px', fontWeight: 800, color: T.blue, minWidth: '54px', letterSpacing: '-0.02em' }}>
-                    {stat.value}
+                'We crawled and evaluated your site using real metrics',
+                'We identified specific gaps that are costing you leads',
+                'We reached out because we believe we can genuinely help',
+              ].map(item => (
+                <div key={item} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
+                  <div style={{ width: '20px', height: '20px', background: '#dbeafe', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginTop: '1px' }}>
+                    <span style={{ color: T.blue, fontSize: '10px', fontWeight: 900 }}>✓</span>
                   </div>
-                  <div>
-                    <div style={{ fontWeight: 700, fontSize: '14px', color: 'white' }}>{stat.label}</div>
-                    <div style={{ fontSize: '12px', color: T.txtDim, marginTop: '2px', lineHeight: 1.5 }}>{stat.sub}</div>
-                  </div>
+                  <span style={{ fontSize: '15px', color: T.txtSec, lineHeight: 1.5 }}>{item}</span>
                 </div>
               ))}
             </div>
           </div>
-
-          {/* Testimonials */}
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: '1fr 1fr',
-            gap: '18px',
-            marginTop: '52px',
-            paddingTop: '48px',
-            borderTop: `1px solid ${T.border}`,
-          }}>
+          <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '16px', padding: '32px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: T.blue, textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: '20px' }}>
+              Example site score breakdown
+            </div>
             {[
-              {
-                quote: 'We knew our site wasn\'t performing but didn\'t have specifics. The audit gave us a prioritized list. TexMG fixed the P0 issues in the first sprint and our Google rankings moved within 6 weeks.',
-                name: 'Ops Director',
-                company: 'Houston-area commercial contractor',
-              },
-              {
-                quote: 'I\'ve talked to a dozen agencies. None of them showed me real data before the pitch. Scott sent an actual PDF with our scores broken down by category. That\'s why we hired them.',
-                name: 'Owner',
-                company: 'Texas HVAC services company',
-              },
-            ].map((t, i) => (
-              <div key={i} style={{
-                background: T.card,
-                borderRadius: '10px',
-                padding: '26px 28px',
-                border: `1px solid ${T.border}`,
-              }}>
-                <p style={{ fontSize: '14px', lineHeight: 1.78, color: T.txtSec, fontStyle: 'italic', marginBottom: '14px' }}>
-                  &ldquo;{t.quote}&rdquo;
-                </p>
-                <div style={{ fontSize: '12px', color: T.txtDim }}>
-                  <strong style={{ color: T.txtMid }}>{t.name}</strong> &mdash; {t.company}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Pricing ─────────────────────────────────────────────────────────── */}
-      <section style={{ padding: '80px 48px' }}>
-        <div style={{ maxWidth: '720px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '10px' }}>
-            What fixing it looks like
-          </h2>
-          <p style={{ color: T.txtMid, fontSize: '15px', marginBottom: '48px', maxWidth: '480px', lineHeight: 1.65 }}>
-            Three engagement models — all starting from your audit, not a template.
-          </p>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-            {[
-              {
-                label: 'Website Redesign',
-                price: 'From $4,500',
-                timeline: '4–6 weeks',
-                detail: 'Full redesign built from P0 findings. Conversion-optimized, mobile-first, 90+ Core Web Vitals. Content strategy included.',
-                highlight: false,
-              },
-              {
-                label: 'SEO & Local Authority',
-                price: 'From $1,200/mo',
-                timeline: '3-month minimum',
-                detail: 'Technical SEO remediation, local GMB optimization, content gap filling, monthly rank tracking. Houston and Texas markets.',
-                highlight: true,
-              },
-              {
-                label: 'GEO / AI Search Optimization',
-                price: 'From $1,500/mo',
-                timeline: '3-month minimum',
-                detail: 'Schema implementation, E-E-A-T signals, AI-readable content formatting. Tracked across ChatGPT, Perplexity, and Google AI Overviews.',
-                highlight: false,
-              },
-            ].map(tier => (
-              <div key={tier.label} style={{
-                background: tier.highlight ? '#0d2040' : T.card,
-                borderRadius: '9px',
-                padding: '20px 24px',
-                border: tier.highlight ? `1px solid ${T.blue}` : `1px solid ${T.border}`,
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                gap: '20px',
-              }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '6px' }}>
-                    <span style={{ fontWeight: 700, fontSize: '14px', color: 'white' }}>{tier.label}</span>
-                    {tier.highlight && (
-                      <span style={{
-                        fontSize: '10px',
-                        background: T.blue,
-                        color: 'white',
-                        padding: '2px 8px',
-                        borderRadius: '4px',
-                        fontWeight: 700,
-                        letterSpacing: '0.4px',
-                        textTransform: 'uppercase',
-                      }}>
-                        Most Common
-                      </span>
-                    )}
+              { label: 'Content & Messaging', score: 51 },
+              { label: 'UX / Conversion', score: 44 },
+              { label: 'SEO Health', score: 38 },
+              { label: 'GEO / AI Search', score: 29 },
+              { label: 'Visual Design', score: 57 },
+            ].map(cat => {
+              const c = cat.score >= 70 ? '#16a34a' : cat.score >= 45 ? '#d97706' : '#dc2626';
+              return (
+                <div key={cat.label} style={{ marginBottom: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: T.txtPri }}>{cat.label}</span>
+                    <span style={{ fontSize: '13px', fontWeight: 700, color: c }}>{cat.score}/100</span>
                   </div>
-                  <div style={{ fontSize: '12px', color: T.txtMid, lineHeight: 1.55 }}>{tier.detail}</div>
+                  <div style={{ background: '#e2e8f0', borderRadius: '4px', height: '6px', overflow: 'hidden' }}>
+                    <div style={{ height: '100%', borderRadius: '4px', width: `${cat.score}%`, background: c }} />
+                  </div>
                 </div>
-                <div style={{ textAlign: 'right', flexShrink: 0 }}>
-                  <div style={{ fontWeight: 800, fontSize: '15px', color: tier.highlight ? T.blueSft : T.txtSec }}>{tier.price}</div>
-                  <div style={{ fontSize: '11px', color: T.txtDim, marginTop: '2px' }}>{tier.timeline}</div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
+            <div style={{ marginTop: '18px', padding: '12px 16px', background: '#fff7ed', border: '1px solid #fed7aa', borderRadius: '8px', fontSize: '13px', color: '#92400e', fontWeight: 500 }}>
+              Overall: <strong>44/100</strong> — significant improvement opportunity across SEO, GEO, and conversion.
+            </div>
           </div>
-          <p style={{ fontSize: '12px', color: T.txtFade, marginTop: '16px' }}>
-            Exact pricing depends on scope. We give you a fixed quote on the call — no hourly billing.
-          </p>
         </div>
       </section>
 
-      {/* ── FAQ ─────────────────────────────────────────────────────────────── */}
-      <section id="faq" style={{
-        background: T.deep,
-        borderTop: `1px solid ${T.border}`,
-        borderBottom: `1px solid ${T.border}`,
-        padding: '80px 48px',
-      }}>
-        <div style={{ maxWidth: '660px', margin: '0 auto' }}>
-          <h2 style={{ fontSize: '28px', fontWeight: 700, marginBottom: '44px' }}>
-            Common questions
-          </h2>
-          <div style={{ display: 'flex', flexDirection: 'column' }}>
-            {FAQS.map((faq, i, arr) => (
-              <div key={faq.q} style={{
-                padding: '22px 0',
-                borderBottom: i < arr.length - 1 ? `1px solid ${T.border}` : 'none',
-              }}>
-                <div style={{ fontWeight: 700, fontSize: '14px', marginBottom: '8px', color: 'white' }}>{faq.q}</div>
-                <div style={{ fontSize: '13px', color: T.txtMid, lineHeight: 1.78 }}>{faq.a}</div>
+      {/* ── What we help fix ────────────────────────────────────────────────── */}
+      <section style={{ background: T.offWhite, borderTop: '1px solid #e2e8f0', padding: '80px 40px' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
+          <div style={{ textAlign: 'center', marginBottom: '48px' }}>
+            <Eyebrow text="Common problems we identify" />
+            <h2 style={{ fontSize: '32px', fontWeight: 800, color: T.txtPri, margin: '0 0 16px' }}>Most business websites have the same six issues.</h2>
+            <p style={{ fontSize: '17px', color: T.txtSec, lineHeight: 1.7, maxWidth: '540px', margin: '0 auto' }}>
+              Any one of these costs you leads. Most sites have several. We identify which ones apply specifically to yours.
+            </p>
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+            {PROBLEMS.map(p => (
+              <div key={p.title} style={{ background: T.white, border: '1px solid #e2e8f0', borderRadius: '12px', padding: '24px 28px' }}>
+                <div style={{ fontSize: '28px', marginBottom: '12px' }}>{p.icon}</div>
+                <div style={{ fontWeight: 700, fontSize: '15px', color: T.txtPri, marginBottom: '8px' }}>{p.title}</div>
+                <p style={{ fontSize: '14px', color: T.txtSec, lineHeight: 1.65, margin: 0 }}>{p.body}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ── Portal Access ────────────────────────────────────────────────────── */}
-      <section style={{
-        background: T.card,
-        borderBottom: `1px solid ${T.border}`,
-        padding: '52px 48px',
-      }}>
-        <div style={{
-          maxWidth: '720px',
-          margin: '0 auto',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          gap: '32px',
-          flexWrap: 'wrap',
-        }}>
+      {/* ── What you get ────────────────────────────────────────────────────── */}
+      <section id="services" style={{ background: T.white, padding: '80px 40px' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: '64px', alignItems: 'start' }}>
           <div>
-            <div style={{ fontWeight: 700, fontSize: '15px', color: 'white', marginBottom: '6px' }}>
-              Already working with us?
-            </div>
-            <div style={{ fontSize: '13px', color: T.txtMid, maxWidth: '380px', lineHeight: 1.65 }}>
-              Access your reports, audit results, and outreach campaign status in the operator portal.
-            </div>
+            <Eyebrow text="What we deliver" />
+            <h2 style={{ fontSize: '32px', fontWeight: 800, color: T.txtPri, lineHeight: 1.2, margin: '0 0 16px' }}>
+              A complete picture — and a clear path forward.
+            </h2>
+            <p style={{ fontSize: '17px', color: T.txtSec, lineHeight: 1.7, margin: '0 0 32px' }}>
+              Our work starts with a thorough review and ends with a concrete action plan. You understand exactly what needs to change, in what order, and what each change will do for your business.
+            </p>
+            <a
+              href={BOOKING_URL}
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{ display: 'inline-block', background: T.blue, color: T.white, padding: '12px 28px', borderRadius: '8px', fontSize: '15px', fontWeight: 700, textDecoration: 'none' }}
+            >
+              Book a Consultation →
+            </a>
           </div>
-          <Link href="/sign-in" style={{
-            background: T.blue,
-            color: 'white',
-            padding: '12px 28px',
-            borderRadius: '7px',
-            textDecoration: 'none',
-            fontWeight: 700,
-            fontSize: '14px',
-            flexShrink: 0,
-          }}>
-            Log In to Portal →
-          </Link>
-        </div>
-      </section>
-
-      {/* ── Final CTA ───────────────────────────────────────────────────────── */}
-      <section style={{ padding: '104px 48px', textAlign: 'center' }}>
-        <div style={{ maxWidth: '580px', margin: '0 auto' }}>
-          <div style={{
-            fontSize: '10px',
-            fontWeight: 700,
-            letterSpacing: '2.5px',
-            textTransform: 'uppercase',
-            color: T.blueSft,
-            marginBottom: '22px',
-          }}>
-            Free · No obligation · 30 minutes
-          </div>
-          <h2 style={{ fontSize: '36px', fontWeight: 800, marginBottom: '18px', lineHeight: 1.12, letterSpacing: '-0.025em' }}>
-            Let&apos;s walk through<br />your report together
-          </h2>
-          <p style={{ color: T.txtSec, fontSize: '16px', marginBottom: '22px', lineHeight: 1.78 }}>
-            We&apos;ll review every finding, explain the impact, and give you a fixed quote.
-            No pitch deck, no generic recommendations — just your report.
-          </p>
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '20px', marginBottom: '36px', flexWrap: 'wrap' }}>
-            {['Free audit already done', 'Fixed-price quotes', 'No long-term contracts required'].map(t => (
-              <div key={t} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: T.txtDim }}>
-                <span style={{ color: T.blue, fontWeight: 700 }}>✓</span> {t}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {SERVICES.map((s, i) => (
+              <div key={s.title} style={{ display: 'flex', gap: '16px', alignItems: 'flex-start', padding: '18px 20px', background: T.offWhite, borderRadius: '10px', border: '1px solid #e2e8f0' }}>
+                <div style={{ width: '32px', height: '32px', background: '#dbeafe', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontWeight: 800, fontSize: '12px', color: T.blue }}>
+                  {String(i + 1).padStart(2, '0')}
+                </div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: '14px', color: T.txtPri, marginBottom: '4px' }}>{s.title}</div>
+                  <div style={{ fontSize: '13px', color: T.txtSec, lineHeight: 1.6 }}>{s.body}</div>
+                </div>
               </div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* ── How it works ────────────────────────────────────────────────────── */}
+      <section id="how-it-works" style={{ background: T.navy, padding: '80px 40px' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto', textAlign: 'center' }}>
+          <Eyebrow text="The process" light />
+          <h2 style={{ fontSize: '32px', fontWeight: 800, color: T.white, marginBottom: '16px' }}>Simple. Transparent. No pressure.</h2>
+          <p style={{ fontSize: '17px', color: '#94a3b8', lineHeight: 1.65, maxWidth: '540px', margin: '0 auto 56px' }}>
+            We do the homework first. The consultation is a conversation — not a sales call.
+          </p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', textAlign: 'left' }}>
+            {[
+              { n: '01', title: 'We review your site', body: 'Our system crawls your website and runs it through a structured evaluation across design, SEO, messaging, and AI-search readiness.' },
+              { n: '02', title: 'We score and prioritize', body: 'Findings are weighted by business impact. Critical issues, high-leverage improvements, and refinements — ranked in order.' },
+              { n: '03', title: 'We share the report', body: 'You get a branded PDF report with real findings specific to your site. No strings attached, no generic template.' },
+              { n: '04', title: 'We meet and advise', body: 'In the consultation, we walk through everything. You leave with clarity on what to fix and what a project looks like.' },
+            ].map(step => (
+              <div key={step.n} style={{ background: '#1e293b', borderRadius: '12px', padding: '28px 24px', border: '1px solid #1e3a5f' }}>
+                <div style={{ fontSize: '28px', fontWeight: 900, color: '#1e3a5f', marginBottom: '16px', letterSpacing: '-0.02em' }}>
+                  {step.n}
+                </div>
+                <div style={{ fontWeight: 700, fontSize: '15px', color: T.white, marginBottom: '10px' }}>{step.title}</div>
+                <div style={{ fontSize: '13px', color: '#94a3b8', lineHeight: 1.65 }}>{step.body}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── GEO / AI Search explainer ───────────────────────────────────────── */}
+      <section style={{ background: T.offWhite, borderTop: '1px solid #e2e8f0', padding: '80px 40px' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '64px', alignItems: 'center' }}>
+          <div>
+            <Eyebrow text="GEO / AI-Search Optimization" />
+            <h2 style={{ fontSize: '32px', fontWeight: 800, color: T.txtPri, lineHeight: 1.2, margin: '0 0 16px' }}>
+              The next generation of search is already here.
+            </h2>
+            <p style={{ fontSize: '17px', color: T.txtSec, lineHeight: 1.7, margin: '0 0 28px' }}>
+              More buyers are starting their vendor searches with ChatGPT, Perplexity, and Google AI Overviews instead of traditional search. If your content is not structured for AI readability, you do not appear in those results — even if you rank well in traditional SEO.
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {[
+                'ChatGPT and Perplexity are replacing Google for many research queries',
+                'AI tools cite and quote sources — your content needs to be quotable',
+                'Structured content, clear authority signals, and entity presence matter',
+                'We evaluate and improve your AI-search readiness in every review',
+              ].map(point => (
+                <div key={point} style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+                  <span style={{ color: T.blue, fontWeight: 800, marginTop: '1px', flexShrink: 0 }}>→</span>
+                  <span style={{ fontSize: '14px', color: T.txtSec, lineHeight: 1.5 }}>{point}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          <div style={{ background: T.white, border: '1px solid #e2e8f0', borderRadius: '16px', padding: '32px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: T.blue, textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: '20px' }}>
+              Where buyers find vendors today
+            </div>
+            {[
+              { platform: 'Traditional Google search', pct: 62, note: 'still dominant but declining' },
+              { platform: 'ChatGPT / AI search', pct: 24, note: 'fastest growing channel' },
+              { platform: 'Perplexity & AI Overviews', pct: 9, note: 'skews toward B2B research' },
+              { platform: 'Other / direct / referral', pct: 5, note: '' },
+            ].map(row => (
+              <div key={row.platform} style={{ marginBottom: '18px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                  <div>
+                    <span style={{ fontSize: '13px', fontWeight: 600, color: T.txtPri }}>{row.platform}</span>
+                    {row.note && <span style={{ fontSize: '11px', color: T.txtMid, marginLeft: '8px' }}>{row.note}</span>}
+                  </div>
+                  <span style={{ fontSize: '13px', fontWeight: 700, color: T.txtSec }}>{row.pct}%</span>
+                </div>
+                <div style={{ background: '#e2e8f0', borderRadius: '4px', height: '6px', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', borderRadius: '4px', width: `${row.pct}%`, background: row.pct >= 20 ? T.blue : '#94a3b8' }} />
+                </div>
+              </div>
+            ))}
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '8px' }}>Industry composite estimate, 2025–2026</div>
+          </div>
+        </div>
+      </section>
+
+      {/* ── Main CTA ────────────────────────────────────────────────────────── */}
+      <section style={{ background: T.blue, padding: '80px 40px' }}>
+        <div style={{ maxWidth: '720px', margin: '0 auto', textAlign: 'center' }}>
+          <h2 style={{ fontSize: '36px', fontWeight: 900, color: T.white, marginBottom: '16px', lineHeight: 1.2 }}>
+            Ready to see what your site is leaving on the table?
+          </h2>
+          <p style={{ fontSize: '17px', color: '#bfdbfe', lineHeight: 1.65, marginBottom: '36px' }}>
+            Book a free consultation. We walk through your site review together — no pressure, no commitments, just clarity on where you stand.
+          </p>
           <a
             href={BOOKING_URL}
             target="_blank"
             rel="noopener noreferrer"
-            style={{
-              display: 'inline-block',
-              background: T.blue,
-              color: 'white',
-              padding: '16px 48px',
-              borderRadius: '7px',
-              textDecoration: 'none',
-              fontWeight: 700,
-              fontSize: '16px',
-            }}
+            style={{ display: 'inline-block', background: T.white, color: T.blue, padding: '16px 40px', borderRadius: '8px', fontSize: '17px', fontWeight: 800, textDecoration: 'none' }}
           >
-            Book a Free Strategy Call →
+            Book Your Free Consultation →
           </a>
-          <div style={{ marginTop: '16px', fontSize: '12px', color: T.txtFade }}>
-            Or reply to our email &nbsp;·&nbsp;{' '}
-            <a href="mailto:scott@texmg.com" style={{ color: T.txtDim, textDecoration: 'none' }}>scott@texmg.com</a>
+          <div style={{ marginTop: '16px', fontSize: '13px', color: '#93c5fd' }}>
+            No commitment required. Typically 30–45 minutes.
           </div>
         </div>
       </section>
 
-      {/* ── Footer ──────────────────────────────────────────────────────────── */}
-      <footer style={{
-        padding: '24px 48px',
-        borderTop: `1px solid ${T.border}`,
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        fontSize: '12px',
-        color: T.txtFade,
-        flexWrap: 'wrap',
-        gap: '10px',
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/tmg-logo.svg" alt="TMG" style={{ height: '18px', width: 'auto', opacity: 0.45 }} />
-          <span>Houston, TX &nbsp;·&nbsp; Website Design, SEO &amp; GEO Optimization</span>
+      {/* ── FAQ ─────────────────────────────────────────────────────────────── */}
+      <section id="faq" style={{ background: T.white, padding: '80px 40px' }}>
+        <div style={{ maxWidth: '760px', margin: '0 auto' }}>
+          <div style={{ marginBottom: '40px' }}>
+            <Eyebrow text="Common questions" />
+            <h2 style={{ fontSize: '32px', fontWeight: 800, color: T.txtPri, margin: 0 }}>Frequently asked questions</h2>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column' }}>
+            {FAQ_ITEMS.map((item, i) => (
+              <div key={item.q} style={{ borderTop: '1px solid #e2e8f0', padding: '24px 0', paddingBottom: i === FAQ_ITEMS.length - 1 ? 0 : '24px' }}>
+                <div style={{ fontWeight: 700, fontSize: '16px', color: T.txtPri, marginBottom: '10px' }}>{item.q}</div>
+                <p style={{ fontSize: '15px', color: T.txtSec, lineHeight: 1.7, margin: 0 }}>{item.a}</p>
+              </div>
+            ))}
+          </div>
         </div>
-        <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-          <a href="mailto:scott@texmg.com" style={{ color: T.txtFade, textDecoration: 'none' }}>scott@texmg.com</a>
-          <a href={BOOKING_URL} target="_blank" rel="noopener noreferrer" style={{ color: T.txtFade, textDecoration: 'none' }}>Book a call</a>
-          <Link href="/sign-in" style={{ color: T.txtDim, textDecoration: 'none', fontWeight: 600 }}>Portal Login</Link>
+      </section>
+
+      {/* ── Portal access ───────────────────────────────────────────────────── */}
+      <section style={{ background: T.offWhite, borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0' }}>
+        <div style={{ maxWidth: '860px', margin: '0 auto', padding: '48px 40px', display: 'flex', gap: '40px', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap' }}>
+          <div>
+            <div style={{ fontWeight: 700, fontSize: '15px', color: T.txtPri, marginBottom: '6px' }}>Team &amp; Operator Access</div>
+            <p style={{ fontSize: '14px', color: T.txtSec, margin: 0, lineHeight: 1.6 }}>
+              Already working with TMG? Log in to access the portal — manage prospects, reports, outreach campaigns, and jobs.
+            </p>
+          </div>
+          <Link
+            href="/sign-in"
+            style={{ display: 'inline-block', background: T.navy, color: T.white, padding: '10px 24px', borderRadius: '8px', fontSize: '14px', fontWeight: 600, textDecoration: 'none', whiteSpace: 'nowrap' }}
+          >
+            Log in to Portal →
+          </Link>
+        </div>
+      </section>
+
+      {/* ── Footer ──────────────────────────────────────────────────────────── */}
+      <footer style={{ background: T.navy, padding: '48px 40px 32px' }}>
+        <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '32px', paddingBottom: '32px' }}>
+          <div>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/tmg-logo.svg" alt="TMG" style={{ height: '28px', width: 'auto', marginBottom: '12px' }} />
+            <p style={{ fontSize: '13px', color: '#475569', margin: 0, maxWidth: '280px', lineHeight: 1.6 }}>
+              Houston-based agency specializing in website redesign, SEO, and AI-search optimization for service businesses.
+            </p>
+          </div>
+          <div style={{ display: 'flex', gap: '48px', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#334155', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: '14px' }}>Services</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {['Website Redesign', 'SEO Optimization', 'GEO / AI Search', 'Conversion Optimization'].map(s => (
+                  <a key={s} href={BOOKING_URL} target="_blank" rel="noopener noreferrer" style={{ fontSize: '13px', color: '#475569', textDecoration: 'none' }}>{s}</a>
+                ))}
+              </div>
+            </div>
+            <div>
+              <div style={{ fontSize: '11px', fontWeight: 700, color: '#334155', textTransform: 'uppercase' as const, letterSpacing: '0.08em', marginBottom: '14px' }}>Company</div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                <a href="#how-it-works" style={{ fontSize: '13px', color: '#475569', textDecoration: 'none' }}>How It Works</a>
+                <a href="#faq" style={{ fontSize: '13px', color: '#475569', textDecoration: 'none' }}>FAQ</a>
+                <a href={BOOKING_URL} target="_blank" rel="noopener noreferrer" style={{ fontSize: '13px', color: '#475569', textDecoration: 'none' }}>Book a Consultation</a>
+                <Link href="/sign-in" style={{ fontSize: '13px', color: '#475569', textDecoration: 'none' }}>Operator Login</Link>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style={{ maxWidth: '1100px', margin: '0 auto', paddingTop: '24px', borderTop: '1px solid #1e293b', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+          <div style={{ fontSize: '12px', color: '#334155' }}>© 2026 TMG / TexMG. All rights reserved.</div>
+          <div style={{ fontSize: '12px', color: '#334155' }}>Houston, Texas</div>
         </div>
       </footer>
-    </main>
+    </div>
   );
 }
