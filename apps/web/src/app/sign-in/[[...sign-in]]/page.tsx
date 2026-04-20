@@ -89,6 +89,7 @@ export default function SignInPage() {
               headerSubtitle: { display: 'none' },
               formButtonPrimary: { background: '#1565C0', fontWeight: 700, fontSize: '14px' },
               footerActionLink: { color: '#4a9fd4' },
+              footer: { display: 'none' },
             },
           }}
         />
