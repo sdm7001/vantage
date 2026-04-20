@@ -31,8 +31,8 @@ export const prospectsRouter = router({
           ...(input.status ? { status: input.status as never } : {}),
           ...(input.search ? {
             OR: [
-              { companyName: { contains: input.search, mode: 'insensitive' } },
-              { domain: { contains: input.search, mode: 'insensitive' } },
+              { companyName: { contains: input.search } },
+              { domain: { contains: input.search } },
             ],
           } : {}),
           ...(input.cursor ? { id: { lt: input.cursor } } : {}),
