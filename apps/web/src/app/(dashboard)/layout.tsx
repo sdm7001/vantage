@@ -12,6 +12,7 @@ import {
   Target,
   Cpu,
   Settings,
+  CalendarDays,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -23,6 +24,7 @@ const NAV: { href: string; label: string; Icon: LucideIcon }[] = [
   { href: '/campaigns',  label: 'Campaigns',  Icon: Megaphone },
   { href: '/sourcing',   label: 'Sourcing',   Icon: Target },
   { href: '/jobs',       label: 'Jobs',       Icon: Cpu },
+  { href: '/book',       label: 'Book a Call', Icon: CalendarDays },
   { href: '/settings',   label: 'Settings',   Icon: Settings },
 ];
 

@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import AttributionTracker from './AttributionTracker';
 
-const BOOKING_URL = process.env.NEXT_PUBLIC_BOOKING_URL ?? 'https://calendly.com/texmg';
+const BOOKING_URL = process.env.NEXT_PUBLIC_BOOKING_URL ?? 'https://cal.com/scott-mcauley-qe0mup/15min';
 
 // ─── Design tokens ────────────────────────────────────────────────────────────
 const T = {
