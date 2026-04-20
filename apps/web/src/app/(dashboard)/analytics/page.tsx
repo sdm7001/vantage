@@ -55,8 +55,7 @@ export default async function AnalyticsPage() {
         status: 'sent',
         sentAt: { gte: new Date(Date.now() - 30 * 86400000) },
       },
-      include: { events: { select: { type: true } } },
-      select: { sequenceIndex: true, events: true },
+      select: { sequenceIndex: true, events: { select: { type: true } } },
     }),
 
     // Top P0 findings
