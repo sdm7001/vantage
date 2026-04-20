@@ -47,7 +47,7 @@ function buildReportHtml(data: ReportData): string {
   const accent = brand.accentColor || '#1565C0';
 
   const logoHtml = brand.logoUrl
-    ? `<img src="${brand.logoUrl}" alt="${brand.companyName}" style="height:38px;max-width:140px;object-fit:contain;filter:brightness(0) invert(1);"/>`
+    ? `<img src="${brand.logoUrl}" alt="${brand.companyName}" style="height:38px;max-width:140px;object-fit:contain;"/>`
     : `<div style="font-size:22px;font-weight:800;color:white;letter-spacing:-0.02em;">${brand.companyName}</div>`;
 
   const categoryRows = categoryScores.map(c => `
@@ -324,7 +324,7 @@ function buildReportHtml(data: ReportData): string {
     <div class="cta-divider"></div>
     <div class="cta-footer-logo">
       ${brand.logoUrl
-        ? `<img src="${brand.logoUrl}" alt="${brand.companyName}" style="height:36px;max-width:120px;object-fit:contain;filter:brightness(0) invert(1);opacity:0.8;"/>`
+        ? `<img src="${brand.logoUrl}" alt="${brand.companyName}" style="height:36px;max-width:120px;object-fit:contain;"/>`
         : `<div style="font-size:18px;font-weight:800;color:rgba(255,255,255,0.7);">${brand.companyName}</div>`
       }
     </div>
