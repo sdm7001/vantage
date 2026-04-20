@@ -18,7 +18,7 @@ module.exports = {
       name: 'vantage-worker',
       cwd: './apps/worker',
       script: 'node',
-      args: 'dist/index.js',
+      args: 'dist/apps/worker/src/index.js',
       env_production: {
         NODE_ENV: 'production',
       },
