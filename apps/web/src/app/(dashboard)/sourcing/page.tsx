@@ -3,8 +3,21 @@
 import { useState } from 'react';
 import { trpc } from '../../../lib/trpc';
 
+type IcpProfile = {
+  id: string;
+  name: string;
+  industries: string[];
+  cities: string[];
+  states: string[];
+  keywords: string[];
+  minEmployees: number | null;
+  maxEmployees: number | null;
+  isDefault: boolean;
+};
+
 export default function SourcingPage() {
-  const { data: profiles, refetch } = trpc.sourcing.getProfiles.useQuery();
+  const { data: profilesRaw, refetch } = trpc.sourcing.getProfiles.useQuery();
+  const profiles = profilesRaw as IcpProfile[] | undefined;
   const createMutation = trpc.sourcing.createProfile.useMutation();
   const updateMutation = trpc.sourcing.updateProfile.useMutation();
   const deleteMutation = trpc.sourcing.deleteProfile.useMutation();
