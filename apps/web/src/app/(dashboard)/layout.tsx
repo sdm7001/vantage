@@ -29,7 +29,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
           <img
             src="/tmg-logo.png"
             alt="TMG"
-            style={{ height: '34px', width: 'auto', display: 'block', marginBottom: '6px' }}
+            style={{ height: '34px', width: 'auto', display: 'block', marginBottom: '6px', filter: 'brightness(0) invert(1)' }}
           />
           <div style={{ fontSize: '9px', color: '#334155', letterSpacing: '0.12em', textTransform: 'uppercase' }}>
             Vantage · Audit-First Outreach
