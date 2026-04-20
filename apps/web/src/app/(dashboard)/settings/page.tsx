@@ -252,7 +252,7 @@ export default function SettingsPage() {
           <div style={{ fontSize: '13px', color: '#94a3b8' }}>No suppressed addresses.</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {(suppressions as Array<{ id: string; type: string; value: string; reason: string | null; createdAt: Date }>).map(s => (
+            {(suppressions as unknown as Array<{ id: string; type: string; value: string; reason: string | null; createdAt: string }>).map(s => (
               <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#fef2f2', borderRadius: '6px', border: '1px solid #fecaca' }}>
                 <div>
                   <span style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', marginRight: '8px' }}>{s.type}</span>
