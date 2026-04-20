@@ -44,14 +44,14 @@ const workers = [
 ];
 
 // Follow-up scheduler: runs every 15 minutes
-const schedulerQueue = new Queue('scheduler:cron', { connection: redis });
+const schedulerQueue = new Queue('scheduler-cron', { connection: redis });
 void schedulerQueue.add('followup-check', {}, {
   repeat: { pattern: '*/15 * * * *' }, // every 15 min
   jobId: 'followup-scheduler', // deduplication
 });
 
 const schedulerWorker = new Worker(
-  'scheduler:cron',
+  'scheduler-cron',
   async () => {
     await runFollowupScheduler();
   },
