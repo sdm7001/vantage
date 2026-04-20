@@ -60,13 +60,13 @@ export type WorkflowRunJobData = {
 
 // Queue names
 export const QUEUE_NAMES = {
-  PROSPECT_ENRICH: 'prospect:enrichment',
-  AUDIT_CRAWL: 'audit:crawl',
-  AUDIT_EVALUATE: 'audit:evaluate',
-  REPORT_GENERATE: 'report:generate',
-  OUTREACH_INITIAL: 'outreach:initial',
-  OUTREACH_FOLLOWUP: 'outreach:followup',
-  WORKFLOW_ORCHESTRATE: 'workflow:orchestrate',
+  PROSPECT_ENRICH: 'prospect-enrichment',
+  AUDIT_CRAWL: 'audit-crawl',
+  AUDIT_EVALUATE: 'audit-evaluate',
+  REPORT_GENERATE: 'report-generate',
+  OUTREACH_INITIAL: 'outreach-initial',
+  OUTREACH_FOLLOWUP: 'outreach-followup',
+  WORKFLOW_ORCHESTRATE: 'workflow-orchestrate',
 } as const;
 
 export type QueueName = (typeof QUEUE_NAMES)[keyof typeof QUEUE_NAMES];
