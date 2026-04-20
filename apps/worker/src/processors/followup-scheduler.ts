@@ -75,7 +75,7 @@ export async function runFollowupScheduler(): Promise<void> {
     await followupQueue.add(
       `followup-${thread.id}-${nextStep}`,
       {
-        orgId: thread.prospect.organization?.id ?? thread.campaignId ?? '',
+        orgId: thread.prospect.orgId,
         prospectId: thread.prospectId,
         contactId: contact.id,
         threadId: thread.id,
