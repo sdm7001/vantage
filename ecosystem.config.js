@@ -18,7 +18,7 @@ module.exports = {
       name: 'vantage-worker',
       cwd: './apps/worker',
       script: 'node',
-      args: 'dist/apps/worker/src/index.js',
+      args: '--require ./register-aliases.cjs dist/apps/worker/src/index.js',
       env_production: {
         NODE_ENV: 'production',
       },
