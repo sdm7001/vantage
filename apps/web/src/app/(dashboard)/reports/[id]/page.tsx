@@ -209,8 +209,8 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
             <div style={{ marginTop: '10px' }}>
               <span style={{
                 padding: '2px 8px', borderRadius: '8px', fontSize: '11px', fontWeight: 600,
-                background: report.prospect.status === 'active' ? '#f0fdf4' : '#f8fafc',
-                color: report.prospect.status === 'active' ? '#16a34a' : '#475569',
+                background: ['ENGAGED', 'CONVERTED', 'OUTREACH_SENT'].includes(report.prospect.status as string) ? '#f0fdf4' : '#f8fafc',
+                color: ['ENGAGED', 'CONVERTED', 'OUTREACH_SENT'].includes(report.prospect.status as string) ? '#16a34a' : '#475569',
               }}>
                 {report.prospect.status}
               </span>
