@@ -10,7 +10,13 @@
   --brand-blue-soft: #4a9fd4; /* readable on dark bg */
 }
 
-body {
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
   background: #f8fafc;
   color: #1e293b;
 }

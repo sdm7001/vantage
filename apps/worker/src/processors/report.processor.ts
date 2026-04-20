@@ -24,13 +24,12 @@ export async function reportProcessor(data: ReportGenerateJobData): Promise<void
 
   const rawBrand = prospect.organization.brandConfig ?? {
     companyName: 'TexMG', senderName: 'Scott', senderEmail: 'scott@texmg.com',
-    bookingUrl: null, primaryColor: '#1a1a2e', accentColor: '#1565C0', logoR2Key: null,
+    bookingUrl: null, primaryColor: '#1a1a2e', accentColor: '#1565C0', logoR2Key: null, logoUrl: null,
   };
 
-  // Resolve logo URL: R2 upload takes priority; fall back to the public app asset
-  const logoUrl = rawBrand.logoR2Key
-    ? `${process.env.R2_PUBLIC_URL ?? ''}/${rawBrand.logoR2Key}`
-    : `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/tmg-logo.svg`;
+  // Prefer direct logoUrl (base64 data URL); fall back to R2 key if configured
+  const logoUrl = rawBrand.logoUrl
+    ?? (rawBrand.logoR2Key ? `${process.env.R2_PUBLIC_URL ?? ''}/${rawBrand.logoR2Key}` : null);
 
   const brand = { ...rawBrand, logoUrl };
 

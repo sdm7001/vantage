@@ -7,8 +7,9 @@ export const settingsRouter = router({
   getBrandConfig: protectedProcedure.query(async ({ ctx }) => {
     const config = await ctx.prisma.brandConfig.findUnique({ where: { orgId: ctx.orgId } });
     if (!config) return null;
+    // Prefer direct logoUrl (base64 data URL); fall back to R2 if configured
     const env = getEnv();
-    const logoUrl = config.logoR2Key ? `${env.R2_PUBLIC_URL}/${config.logoR2Key}` : null;
+    const logoUrl = config.logoUrl ?? (config.logoR2Key ? `${env.R2_PUBLIC_URL}/${config.logoR2Key}` : null);
     return { ...config, logoUrl };
   }),
 

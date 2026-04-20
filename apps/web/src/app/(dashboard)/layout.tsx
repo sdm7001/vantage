@@ -30,7 +30,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname();
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: '#f8fafc' }}>
+    <div style={{ display: 'flex', minHeight: '100vh', background: '#f8fafc', margin: 0, padding: 0 }}>
       {/* Sidebar */}
       <aside style={{ width: '224px', background: '#0f172a', color: 'white', display: 'flex', flexDirection: 'column', padding: '0', flexShrink: 0 }}>
 

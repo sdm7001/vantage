@@ -119,6 +119,7 @@ model BrandConfig {
   senderEmail     String  @default("scott@texmg.com") @db.VarChar(191)
   bookingUrl      String? @db.Text
   logoR2Key       String? @db.VarChar(191)
+  logoUrl         String? @db.Text
   primaryColor    String  @default("#1a1a2e") @db.VarChar(20)
   accentColor     String  @default("#3b82f6") @db.VarChar(20)
   companyAddress  String? @db.VarChar(500)
