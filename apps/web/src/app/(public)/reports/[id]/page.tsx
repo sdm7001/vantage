@@ -1,11 +1,11 @@
 import { prisma } from '@vantage/database';
 import { notFound } from 'next/navigation';
 
-export default async function PublicReportPage({ params }: { params: Promise<{ token: string }> }) {
-  const { token } = await params;
+export default async function PublicReportPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
 
   const report = await prisma.prospectReport.findFirst({
-    where: { publicToken: token, status: 'ready' },
+    where: { publicToken: id, status: 'ready' },
     include: {
       prospect: {
         select: {
@@ -40,8 +40,8 @@ export default async function PublicReportPage({ params }: { params: Promise<{ t
   const scoreColor = overallScore >= 70 ? '#16a34a' : overallScore >= 45 ? '#d97706' : '#dc2626';
   const scoreLabel = overallScore >= 70 ? 'Strong' : overallScore >= 45 ? 'Needs Work' : 'Critical Gap';
 
-  const pdfUrl = `/api/reports/${token}`;
-  const downloadUrl = `/api/reports/${token}?download=1`;
+  const pdfUrl = `/api/reports/${id}`;
+  const downloadUrl = `/api/reports/${id}?download=1`;
 
   return (
     <div style={{ fontFamily: 'system-ui, sans-serif', background: '#f8fafc', minHeight: '100vh' }}>
