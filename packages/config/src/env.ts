@@ -7,21 +7,21 @@ const envSchema = z.object({
   // Clerk
   NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: z.string().min(1, 'Clerk publishable key required'),
   CLERK_SECRET_KEY: z.string().min(1, 'Clerk secret key required'),
-  CLERK_WEBHOOK_SECRET: z.string().min(1, 'Clerk webhook secret required'),
+  CLERK_WEBHOOK_SECRET: z.string().optional().default(''),
 
   // Database (Supabase PostgreSQL)
   DATABASE_URL: z.string().url('DATABASE_URL must be a valid connection string'),
 
   // Redis (Upstash)
   UPSTASH_REDIS_URL: z.string().url('Upstash Redis URL required'),
-  UPSTASH_REDIS_TOKEN: z.string().min(1, 'Upstash Redis token required'),
+  UPSTASH_REDIS_TOKEN: z.string().default(''),
 
   // Cloudflare R2
-  R2_ACCOUNT_ID: z.string().min(1, 'R2 account ID required'),
-  R2_ACCESS_KEY_ID: z.string().min(1, 'R2 access key required'),
-  R2_SECRET_ACCESS_KEY: z.string().min(1, 'R2 secret access key required'),
-  R2_BUCKET_NAME: z.string().min(1, 'R2 bucket name required'),
-  R2_PUBLIC_URL: z.string().url('R2 public URL required'),
+  R2_ACCOUNT_ID: z.string().default(''),
+  R2_ACCESS_KEY_ID: z.string().default(''),
+  R2_SECRET_ACCESS_KEY: z.string().default(''),
+  R2_BUCKET_NAME: z.string().default('vantage-reports'),
+  R2_PUBLIC_URL: z.string().default(''),
 
   // Microsoft 365 (Graph API — used for outreach email sending)
   M365_TENANT_ID: z.string().min(1, 'M365 tenant ID required'),
