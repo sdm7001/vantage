@@ -16,7 +16,7 @@ export async function checkForReplies(): Promise<void> {
       resendMessageId: { not: null },
       thread: {
         state: {
-          in: ['INITIAL_SENT', 'FOLLOWUP_1_SENT', 'FOLLOWUP_2_SENT', 'FOLLOWUP_3_SENT', 'FOLLOWUP_4_SENT'] as never[],
+          in: ['INITIAL_SENT', 'FOLLOWUP_1_SENT', 'FOLLOWUP_2_SENT', 'FOLLOWUP_3_SENT', 'FOLLOWUP_4_SENT', 'FOLLOWUP_5_SENT'] as never[],
         },
       },
     },
@@ -46,9 +46,10 @@ export async function checkForReplies(): Promise<void> {
 
     try {
       // Query inbox only — replies arrive in our inbox, original sent message is in Sent Items
+      const safeConvId = convId.replace(/'/g, "''");
       const res = await fetch(
         `https://graph.microsoft.com/v1.0/users/${encodeURIComponent(mailbox)}/mailFolders/Inbox/messages` +
-        `?$filter=conversationId eq '${convId}'&$select=id,from,receivedDateTime&$top=5`,
+        `?$filter=conversationId eq '${safeConvId}'&$select=id,from,receivedDateTime&$top=5`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
 

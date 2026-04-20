@@ -25,7 +25,7 @@ export type OutreachContext = {
 };
 
 export type FollowupContext = OutreachContext & {
-  sequenceIndex: 1 | 2 | 3 | 4;
+  sequenceIndex: 1 | 2 | 3 | 4 | 5;
   previousEmailSubject: string;
   previousEmailSentAt: string;
   threadEngagement: {
@@ -38,5 +38,6 @@ export type FollowupAngle = {
   1: 'new_pain_point';
   2: 'social_proof';
   3: 'value_add_tip';
-  4: 'break_up';
+  4: 'roi_proof';
+  5: 'break_up';
 };

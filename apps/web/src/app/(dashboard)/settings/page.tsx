@@ -6,11 +6,16 @@ import { trpc } from '../../../lib/trpc';
 export default function SettingsPage() {
   const { data: config, isLoading } = trpc.settings.getBrandConfig.useQuery();
   const updateMutation = trpc.settings.updateBrandConfig.useMutation();
+  const { data: suppressions, refetch: refetchSuppressions } = trpc.settings.getSuppressions.useQuery({ limit: 200 });
+  const removeSuppressionMutation = trpc.settings.removeSuppression.useMutation();
+  const addSuppressionMutation = trpc.settings.addSuppression.useMutation();
+  const [suppressForm, setSuppressForm] = useState({ value: '', type: 'EMAIL' as 'EMAIL' | 'DOMAIN' });
+  const [suppressError, setSuppressError] = useState('');
 
   const [form, setForm] = useState({
     companyName: 'TexMG',
-    primaryColor: '#0f172a',
-    accentColor: '#3b82f6',
+    primaryColor: '#8B1E1E',
+    accentColor: '#1565C0',
     senderName: 'Scott',
     senderEmail: 'scott@texmg.com',
     bookingUrl: '',
@@ -18,19 +23,56 @@ export default function SettingsPage() {
 
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+  const [logoUrl, setLogoUrl] = useState<string | null>(null);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [logoError, setLogoError] = useState('');
 
   useEffect(() => {
     if (config) {
       setForm({
         companyName: config.companyName ?? 'TexMG',
-        primaryColor: config.primaryColor ?? '#0f172a',
-        accentColor: config.accentColor ?? '#3b82f6',
+        primaryColor: config.primaryColor ?? '#8B1E1E',
+        accentColor: config.accentColor ?? '#1565C0',
         senderName: config.senderName ?? 'Scott',
         senderEmail: config.senderEmail ?? 'scott@texmg.com',
         bookingUrl: config.bookingUrl ?? '',
       });
+      if (config.logoUrl) setLogoUrl(config.logoUrl);
     }
   }, [config]);
+
+  async function handleLogoUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setLogoUploading(true);
+    setLogoError('');
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await fetch('/api/upload/logo', { method: 'POST', body: fd });
+      if (!res.ok) { setLogoError('Upload failed'); return; }
+      const { url } = await res.json() as { url: string };
+      setLogoUrl(url);
+    } catch {
+      setLogoError('Upload failed');
+    } finally {
+      setLogoUploading(false);
+    }
+  }
+
+  async function handleAddSuppression(e: React.SyntheticEvent) {
+    e.preventDefault();
+    const v = suppressForm.value.trim();
+    if (!v) return;
+    setSuppressError('');
+    try {
+      await addSuppressionMutation.mutateAsync({ value: v, type: suppressForm.type });
+      setSuppressForm(f => ({ ...f, value: '' }));
+      void refetchSuppressions();
+    } catch (err) {
+      setSuppressError(err instanceof Error ? err.message : 'Failed');
+    }
+  }
 
   async function handleSave(e: React.SyntheticEvent) {
     e.preventDefault();
@@ -68,13 +110,28 @@ export default function SettingsPage() {
             />
           </Field>
 
+          <Field label="Logo" hint="PNG, JPG, WebP or SVG · max 2 MB">
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              {logoUrl && (
+                <img src={logoUrl} alt="Logo preview" style={{ height: '40px', maxWidth: '120px', objectFit: 'contain', border: '1px solid #e2e8f0', borderRadius: '4px', padding: '4px' }} />
+              )}
+              <label style={{ cursor: 'pointer' }}>
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={handleLogoUpload} style={{ display: 'none' }} />
+                <span style={{ display: 'inline-block', padding: '7px 14px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '12px', fontWeight: 600, color: '#475569' }}>
+                  {logoUploading ? 'Uploading…' : logoUrl ? 'Replace Logo' : 'Upload Logo'}
+                </span>
+              </label>
+              {logoError && <span style={{ fontSize: '12px', color: '#dc2626' }}>{logoError}</span>}
+            </div>
+          </Field>
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
             <Field label="Primary Color" hint="Header background">
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 <input type="color" value={form.primaryColor} onChange={e => setForm(f => ({ ...f, primaryColor: e.target.value }))}
                   style={{ width: '40px', height: '36px', padding: '2px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer' }} />
                 <input value={form.primaryColor} onChange={e => setForm(f => ({ ...f, primaryColor: e.target.value }))}
-                  placeholder="#0f172a" style={{ ...inputStyle, flex: 1 }} />
+                  placeholder="#8B1E1E" style={{ ...inputStyle, flex: 1 }} />
               </div>
             </Field>
             <Field label="Accent Color" hint="Buttons and highlights">
@@ -82,7 +139,7 @@ export default function SettingsPage() {
                 <input type="color" value={form.accentColor} onChange={e => setForm(f => ({ ...f, accentColor: e.target.value }))}
                   style={{ width: '40px', height: '36px', padding: '2px', border: '1px solid #d1d5db', borderRadius: '4px', cursor: 'pointer' }} />
                 <input value={form.accentColor} onChange={e => setForm(f => ({ ...f, accentColor: e.target.value }))}
-                  placeholder="#3b82f6" style={{ ...inputStyle, flex: 1 }} />
+                  placeholder="#1565C0" style={{ ...inputStyle, flex: 1 }} />
               </div>
             </Field>
           </div>
@@ -92,7 +149,7 @@ export default function SettingsPage() {
         <section style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '24px', marginBottom: '20px' }}>
           <h2 style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '16px' }}>Sender Profile</h2>
           <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '16px' }}>
-            The From name and reply-to shown in outreach emails. Must match a verified Resend sender.
+            The From name and reply-to shown in outreach emails. Must match a verified Microsoft 365 sender mailbox.
           </p>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
@@ -133,7 +190,7 @@ export default function SettingsPage() {
           <div style={{ background: form.primaryColor, color: 'white', borderRadius: '8px', padding: '16px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <div>
               <div style={{ fontSize: '10px', color: form.accentColor, letterSpacing: '2px', fontWeight: 700 }}>
-                COMPLIMENTARY ANALYSIS BY {form.companyName.toUpperCase()}
+                WEBSITE AUDIT BY {form.companyName.toUpperCase()}
               </div>
               <div style={{ fontSize: '18px', fontWeight: 700, marginTop: '2px' }}>Website Marketing Audit</div>
               <div style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>Prospect Company Name</div>
@@ -157,6 +214,65 @@ export default function SettingsPage() {
           {error && <span style={{ fontSize: '13px', color: '#dc2626' }}>{error}</span>}
         </div>
       </form>
+
+      {/* Suppression list */}
+      <section style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '24px', marginTop: '20px' }}>
+        <h2 style={{ fontSize: '14px', fontWeight: 700, color: '#0f172a', marginBottom: '4px' }}>Suppression List</h2>
+        <p style={{ fontSize: '12px', color: '#94a3b8', marginBottom: '16px' }}>
+          Emails and domains that will never receive outreach. Added automatically on unsubscribe or bounce.
+        </p>
+
+        {/* Manual add form */}
+        <form onSubmit={e => void handleAddSuppression(e)} style={{ display: 'flex', gap: '8px', marginBottom: '16px', alignItems: 'flex-start', flexWrap: 'wrap' }}>
+          <select
+            value={suppressForm.type}
+            onChange={e => setSuppressForm(f => ({ ...f, type: e.target.value as 'EMAIL' | 'DOMAIN' }))}
+            style={{ border: '1px solid #d1d5db', borderRadius: '6px', padding: '7px 10px', fontSize: '13px', background: 'white', cursor: 'pointer' }}
+          >
+            <option value="EMAIL">Email</option>
+            <option value="DOMAIN">Domain</option>
+          </select>
+          <input
+            value={suppressForm.value}
+            onChange={e => setSuppressForm(f => ({ ...f, value: e.target.value }))}
+            placeholder={suppressForm.type === 'EMAIL' ? 'contact@example.com' : 'example.com'}
+            style={{ flex: 1, minWidth: '200px', border: '1px solid #d1d5db', borderRadius: '6px', padding: '7px 10px', fontSize: '13px', outline: 'none' }}
+          />
+          <button
+            type="submit"
+            disabled={addSuppressionMutation.isPending || !suppressForm.value.trim()}
+            style={{ background: addSuppressionMutation.isPending ? '#94a3b8' : '#0f172a', color: 'white', border: 'none', borderRadius: '6px', padding: '7px 16px', fontSize: '13px', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+          >
+            {addSuppressionMutation.isPending ? '…' : '+ Suppress'}
+          </button>
+          {suppressError && <div style={{ width: '100%', fontSize: '11px', color: '#dc2626' }}>{suppressError}</div>}
+        </form>
+
+        {!suppressions?.length ? (
+          <div style={{ fontSize: '13px', color: '#94a3b8' }}>No suppressed addresses.</div>
+        ) : (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+            {(suppressions as Array<{ id: string; type: string; value: string; reason: string | null; createdAt: Date }>).map(s => (
+              <div key={s.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', background: '#fef2f2', borderRadius: '6px', border: '1px solid #fecaca' }}>
+                <div>
+                  <span style={{ fontSize: '11px', fontWeight: 700, color: '#94a3b8', marginRight: '8px' }}>{s.type}</span>
+                  <span style={{ fontSize: '13px', color: '#1e293b' }}>{s.value}</span>
+                  {s.reason && <span style={{ fontSize: '11px', color: '#94a3b8', marginLeft: '8px' }}>· {s.reason}</span>}
+                </div>
+                <button
+                  onClick={async () => {
+                    await removeSuppressionMutation.mutateAsync({ id: s.id });
+                    void refetchSuppressions();
+                  }}
+                  style={{ background: 'none', border: '1px solid #fca5a5', color: '#dc2626', borderRadius: '4px', padding: '3px 8px', fontSize: '11px', cursor: 'pointer' }}
+                >
+                  Remove
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

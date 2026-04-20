@@ -15,11 +15,13 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     return new Response('Report not found or not ready.', { status: 404 });
   }
 
-  // Increment view count (non-blocking)
-  prisma.prospectReport.update({
-    where: { id: report.id },
-    data: { viewCount: { increment: 1 } },
-  }).catch(() => {});
+  // Only increment on explicit download (download=1); page-view is counted by the server page
+  if (req.nextUrl.searchParams.get('download') === '1') {
+    prisma.prospectReport.update({
+      where: { id: report.id },
+      data: { viewCount: { increment: 1 } },
+    }).catch(() => {});
+  }
 
   // Stream PDF from R2
   const client = new S3Client({

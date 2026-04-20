@@ -24,6 +24,8 @@ export default async function AnalyticsPage() {
     auditScores,
     emailStats,
     topFindings,
+    landingPageVisits,
+    reportViews,
   ] = await Promise.all([
     prisma.prospect.count({ where: { orgId: org.id } }),
     prisma.websiteAudit.count({ where: { prospect: { orgId: org.id }, status: 'completed' } }),
@@ -65,6 +67,15 @@ export default async function AnalyticsPage() {
       _count: { title: true },
       orderBy: { _count: { title: 'desc' } },
       take: 8,
+    }),
+
+    // Landing page visits (unique prospects who clicked through)
+    prisma.landingPageVisit.count({ where: { orgId: org.id } }),
+
+    // Total report views (across all prospects)
+    prisma.prospectReport.aggregate({
+      where: { prospect: { orgId: org.id }, status: 'ready' },
+      _sum: { viewCount: true },
     }),
   ]);
 
@@ -110,7 +121,7 @@ export default async function AnalyticsPage() {
     await prisma.prospect.count({ where: { orgId: org.id, status: { in: ['ENRICHED', 'AUDITING', 'AUDITED', 'REPORT_GENERATING', 'REPORT_READY', 'OUTREACH_QUEUED', 'OUTREACH_SENT', 'ENGAGED', 'CONVERTED'] as never[] } } }),
     auditsCompleted,
     reportsGenerated,
-    await prisma.outreachThread.count({ where: { prospect: { orgId: org.id }, state: { in: ['INITIAL_SENT', 'FOLLOWUP_1_QUEUED', 'FOLLOWUP_1_SENT', 'FOLLOWUP_2_QUEUED', 'FOLLOWUP_2_SENT', 'FOLLOWUP_3_QUEUED', 'FOLLOWUP_3_SENT', 'FOLLOWUP_4_QUEUED', 'FOLLOWUP_4_SENT', 'REPLIED', 'COMPLETED'] as never[] } } }),
+    await prisma.outreachThread.count({ where: { prospect: { orgId: org.id }, state: { in: ['INITIAL_SENT', 'FOLLOWUP_1_QUEUED', 'FOLLOWUP_1_SENT', 'FOLLOWUP_2_QUEUED', 'FOLLOWUP_2_SENT', 'FOLLOWUP_3_QUEUED', 'FOLLOWUP_3_SENT', 'FOLLOWUP_4_QUEUED', 'FOLLOWUP_4_SENT', 'FOLLOWUP_5_QUEUED', 'FOLLOWUP_5_SENT', 'REPLIED', 'COMPLETED'] as never[] } } }),
     threadsReplied,
     conversions,
   ];
@@ -118,22 +129,22 @@ export default async function AnalyticsPage() {
   const funnelMax = Math.max(...funnelCounts, 1);
 
   const statusColors: Record<string, string> = {
-    NEW: '#94a3b8', ENRICHING: '#3b82f6', ENRICHED: '#6366f1',
+    NEW: '#94a3b8', ENRICHING: '#1565C0', ENRICHED: '#6366f1',
     AUDITING: '#f59e0b', AUDITED: '#f97316',
     REPORT_GENERATING: '#8b5cf6', REPORT_READY: '#10b981',
     OUTREACH_QUEUED: '#06b6d4', OUTREACH_SENT: '#0ea5e9',
     ENGAGED: '#84cc16', CONVERTED: '#16a34a',
-    SUPPRESSED: '#6b7280', ARCHIVED: '#94a3b8',
+    SUPPRESSED: '#6b7280', UNSUBSCRIBED: '#b91c1c', ARCHIVED: '#94a3b8',
   };
 
   return (
     <div style={{ padding: '32px', maxWidth: '1200px' }}>
       <h1 style={{ fontSize: '24px', fontWeight: 700, color: '#0f172a', marginBottom: '24px' }}>Analytics</h1>
 
-      {/* KPI cards */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '28px' }}>
+      {/* KPI cards — row 1 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '12px' }}>
         {[
-          { label: 'Total Prospects', value: totalProspects, sub: null, color: '#3b82f6' },
+          { label: 'Total Prospects', value: totalProspects, sub: null, color: '#1565C0' },
           { label: 'Audits Completed', value: auditsCompleted, sub: null, color: '#7c3aed' },
           { label: 'Reports Generated', value: reportsGenerated, sub: null, color: '#0891b2' },
           { label: 'Emails Today', value: `${emailsToday}/${emailCap}`, sub: `${replyRate}% reply rate`, color: emailsToday >= emailCap ? '#dc2626' : '#16a34a' },
@@ -141,6 +152,22 @@ export default async function AnalyticsPage() {
           <div key={card.label} style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '20px' }}>
             <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{card.label}</div>
             <div style={{ fontSize: '32px', fontWeight: 800, color: card.color }}>{card.value}</div>
+            {card.sub && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>{card.sub}</div>}
+          </div>
+        ))}
+      </div>
+
+      {/* KPI cards — row 2 */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '16px', marginBottom: '28px' }}>
+        {[
+          { label: 'Threads Replied', value: threadsReplied, sub: `of ${totalThreadsSent} sent`, color: '#16a34a' },
+          { label: 'LP Visits', value: landingPageVisits, sub: 'landing page click-throughs', color: '#f59e0b' },
+          { label: 'Converted', value: conversions, sub: null, color: '#15803d' },
+          { label: 'Report Views', value: reportViews._sum.viewCount ?? 0, sub: 'public report opens', color: '#0891b2' },
+        ].map(card => (
+          <div key={card.label} style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '20px' }}>
+            <div style={{ fontSize: '11px', color: '#94a3b8', marginBottom: '6px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{card.label}</div>
+            <div style={{ fontSize: '32px', fontWeight: 800, color: card.color }}>{card.value ?? '—'}</div>
             {card.sub && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>{card.sub}</div>}
           </div>
         ))}

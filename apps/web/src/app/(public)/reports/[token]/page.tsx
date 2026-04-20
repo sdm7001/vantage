@@ -6,14 +6,36 @@ export default async function PublicReportPage({ params }: { params: Promise<{ t
 
   const report = await prisma.prospectReport.findFirst({
     where: { publicToken: token, status: 'ready' },
-    include: { prospect: { select: { companyName: true, domain: true } } },
+    include: {
+      prospect: {
+        select: {
+          companyName: true,
+          domain: true,
+          orgId: true,
+        },
+      },
+    },
   });
 
   if (!report) notFound();
 
+  const brandConfig = await prisma.brandConfig.findFirst({
+    where: { orgId: report.prospect.orgId },
+  });
+
   const reportData = report.jsonContent as Record<string, unknown> | null;
   const overallScore = (reportData?.overallScore as number) ?? 0;
   const company = report.prospect.companyName ?? report.prospect.domain;
+
+  const senderEmail = brandConfig?.senderEmail ?? 'hello@texmg.com';
+  const bookingUrl = brandConfig?.bookingUrl ?? null;
+  const brandName = brandConfig?.companyName ?? 'TexMG';
+
+  // Increment view count on page load (non-blocking)
+  void prisma.prospectReport.update({
+    where: { id: report.id },
+    data: { viewCount: { increment: 1 } },
+  }).catch(() => {});
 
   const scoreColor = overallScore >= 70 ? '#16a34a' : overallScore >= 45 ? '#d97706' : '#dc2626';
   const scoreLabel = overallScore >= 70 ? 'Strong' : overallScore >= 45 ? 'Needs Work' : 'Critical Gap';
@@ -26,7 +48,7 @@ export default async function PublicReportPage({ params }: { params: Promise<{ t
       {/* Header */}
       <div style={{ background: '#0f172a', color: 'white', padding: '24px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <div style={{ fontSize: '11px', color: '#3b82f6', letterSpacing: '2px', fontWeight: 700 }}>COMPLIMENTARY ANALYSIS BY TEXMG</div>
+          <div style={{ fontSize: '11px', color: '#4a9fd4', letterSpacing: '2px', fontWeight: 700 }}>COMPLIMENTARY ANALYSIS BY {brandName.toUpperCase()}</div>
           <div style={{ fontSize: '22px', fontWeight: 700, marginTop: '4px' }}>Website Marketing Audit</div>
           <div style={{ fontSize: '14px', color: '#94a3b8', marginTop: '4px' }}>{company}</div>
         </div>
@@ -37,7 +59,7 @@ export default async function PublicReportPage({ params }: { params: Promise<{ t
           </div>
           <a
             href={downloadUrl}
-            style={{ background: '#3b82f6', color: 'white', padding: '10px 20px', borderRadius: '8px', textDecoration: 'none', fontWeight: 600, fontSize: '14px' }}
+            style={{ background: '#1565C0', color: 'white', padding: '10px 20px', borderRadius: '8px', textDecoration: 'none', fontWeight: 600, fontSize: '14px' }}
           >
             ↓ Download PDF
           </a>
@@ -82,14 +104,36 @@ export default async function PublicReportPage({ params }: { params: Promise<{ t
         <div style={{ background: '#1e293b', color: 'white', borderRadius: '12px', padding: '32px', textAlign: 'center' }}>
           <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '12px' }}>Want to fix these gaps?</h2>
           <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px' }}>
-            TexMG helps Houston businesses solve these exact issues with managed IT and AI-powered marketing.
+            {brandName} helps businesses solve these exact issues — audit-backed redesigns, SEO, and AI search optimization.
           </p>
-          <a
-            href="mailto:scott@texmg.com?subject=Website Audit Follow-Up"
-            style={{ background: '#3b82f6', color: 'white', padding: '12px 28px', borderRadius: '8px', textDecoration: 'none', fontWeight: 600 }}
-          >
-            Reply to Schedule a Free Call
-          </a>
+          <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
+            {bookingUrl ? (
+              <a
+                href={bookingUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ background: '#1565C0', color: 'white', padding: '12px 28px', borderRadius: '8px', textDecoration: 'none', fontWeight: 600 }}
+              >
+                Book a Free Strategy Call →
+              </a>
+            ) : null}
+            <a
+              href={`mailto:${senderEmail}?subject=Website Audit Follow-Up — ${company}`}
+              style={{
+                background: bookingUrl ? '#0f172a' : '#1565C0',
+                color: 'white', padding: '12px 28px', borderRadius: '8px',
+                textDecoration: 'none', fontWeight: 600,
+                border: bookingUrl ? '1px solid #334155' : 'none',
+              }}
+            >
+              Reply to Our Email
+            </a>
+          </div>
+          <div style={{ marginTop: '20px' }}>
+            <a href="/" style={{ fontSize: '12px', color: '#475569', textDecoration: 'none' }}>
+              Learn how we can help →
+            </a>
+          </div>
         </div>
       </div>
     </div>

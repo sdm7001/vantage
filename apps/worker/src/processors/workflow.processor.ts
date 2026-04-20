@@ -54,7 +54,7 @@ export async function workflowProcessor(data: WorkflowRunJobData): Promise<void>
       await prisma.prospect.update({ where: { id: prospectId }, data: { status: 'AUDITING' } });
 
       const crawlQueue = new Queue(QUEUE_NAMES.AUDIT_CRAWL, { connection: redis });
-      const crawlJob = await crawlQueue.add('crawl', {
+      await crawlQueue.add('crawl', {
         orgId, prospectId, auditId: audit.id, domain: prospect.domain, workflowRunId,
       }, JOB_OPTIONS[QUEUE_NAMES.AUDIT_CRAWL]);
 
@@ -110,7 +110,7 @@ export async function workflowProcessor(data: WorkflowRunJobData): Promise<void>
 
   } catch (err) {
     const errMsg = err instanceof Error ? err.message : String(err);
-    steps[steps.length - 1 < 0 ? 0 : steps.length - 1].status = 'failed';
+    if (steps.length > 0) steps[steps.length - 1].status = 'failed';
     await prisma.workflowRun.update({
       where: { id: workflowRunId },
       data: { status: 'failed', errorMessage: errMsg, steps: steps as never },

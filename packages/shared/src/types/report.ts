@@ -57,6 +57,7 @@ export type ReportData = {
     bookingUrl?: string;
     primaryColor: string;
     accentColor: string;
+    logoUrl?: string;
   };
 };
 

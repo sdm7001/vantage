@@ -1,9 +1,12 @@
 import { prisma } from '@vantage/database';
-import type { OutreachInitialJobData } from '@vantage/queue';
+import { Queue } from 'bullmq';
+import { type OutreachInitialJobData, QUEUE_NAMES, JOB_OPTIONS } from '@vantage/queue';
 import { runOutreachCopyAgent } from '../agents/outreach-copy.agent';
 import { runQaGuardrails } from '../agents/qa-guardrails.agent';
 import { sendEmail } from '../lib/mailer';
 import { getEnv } from '@vantage/config';
+import { getRedis } from '../lib/redis';
+import { resolveBrandSender, buildEmailHtml } from '../lib/outreach-email';
 
 export async function outreachInitialProcessor(data: OutreachInitialJobData): Promise<void> {
   const { orgId, prospectId, contactId, threadId, emailId } = data;
@@ -16,7 +19,14 @@ export async function outreachInitialProcessor(data: OutreachInitialJobData): Pr
   const limit = campaign.campaign?.dailyNewLimit ?? 10;
 
   if (existing && existing.newOutboundSent >= limit) {
-    throw new Error(`Daily cap (${limit}) reached for org ${orgId} on ${today}`);
+    // Re-enqueue for 00:05 tomorrow so the email sends when the cap resets
+    const midnight = new Date();
+    midnight.setDate(midnight.getDate() + 1);
+    midnight.setHours(0, 5, 0, 0);
+    const queue = new Queue(QUEUE_NAMES.OUTREACH_INITIAL, { connection: getRedis() });
+    await queue.add('send-initial', data, { ...JOB_OPTIONS[QUEUE_NAMES.OUTREACH_INITIAL], delay: midnight.getTime() - Date.now() });
+    console.log(`[outreach-initial] Cap reached (${limit}) — re-queued for ${midnight.toISOString()}`);
+    return;
   }
 
   // Suppression check
@@ -41,7 +51,7 @@ export async function outreachInitialProcessor(data: OutreachInitialJobData): Pr
     return;
   }
 
-  const [prospect, report, painPointAnalysis, brand] = await Promise.all([
+  const [prospect, report, painPointAnalysis, org] = await Promise.all([
     prisma.prospect.findUniqueOrThrow({ where: { id: prospectId } }),
     prisma.prospectReport.findFirst({
       where: { prospectId, status: 'ready' },
@@ -51,18 +61,13 @@ export async function outreachInitialProcessor(data: OutreachInitialJobData): Pr
       where: { prospectId },
       orderBy: { createdAt: 'desc' },
     }),
-    prisma.organization.findUniqueOrThrow({ where: { id: orgId }, include: { brandConfig: true } }).then((o: { brandConfig: unknown }) => o.brandConfig as Awaited<ReturnType<typeof prisma.brandConfig.findUnique>> | null),
+    prisma.organization.findUniqueOrThrow({ where: { id: orgId }, include: { brandConfig: true } }),
   ]);
 
-  const senderName = brand?.senderName ?? env.TEXMG_SENDER_NAME;
-  const senderEmail = brand?.senderEmail ?? env.TEXMG_SENDER_EMAIL;
-  const senderCompany = brand?.companyName ?? env.TEXMG_COMPANY_NAME;
-  const bookingUrl = brand?.bookingUrl ?? env.TEXMG_BOOKING_URL;
-  const appUrl = env.NEXT_PUBLIC_APP_URL;
+  const { senderName, senderEmail, senderCompany, bookingUrl, appUrl } = resolveBrandSender(org.brandConfig, env);
 
-  const reportUrl = report
-    ? `${appUrl}/reports/${report.publicToken}`
-    : '';
+  const reportUrl = report ? `${appUrl}/reports/${report.publicToken}` : '';
+  const overallScore = (report?.jsonContent as { overallScore?: number } | null)?.overallScore ?? 0;
 
   const emailDraft = await runOutreachCopyAgent({
     prospectDomain: prospect.domain,
@@ -70,7 +75,7 @@ export async function outreachInitialProcessor(data: OutreachInitialJobData): Pr
     contactFirstName: contact.firstName ?? undefined,
     contactLastName: contact.lastName ?? undefined,
     contactTitle: contact.title ?? undefined,
-    overallScore: 0,
+    overallScore,
     topPainPoint: painPointAnalysis?.primaryPainPoint ?? 'your website has optimization opportunities',
     outreachAngle: (painPointAnalysis?.outreachAngles as Array<{ angle: string }> | null)?.[0]?.angle ?? 'audit results',
     reportPublicUrl: reportUrl,
@@ -80,22 +85,13 @@ export async function outreachInitialProcessor(data: OutreachInitialJobData): Pr
     bookingUrl: bookingUrl ?? undefined,
   });
 
-  // QA check
   const allFindings: string[] = (painPointAnalysis?.valueHooks as string[] | null) ?? [];
   const qa = await runQaGuardrails(emailDraft.htmlBody, allFindings, 'email');
   if (!qa.passed && qa.violations.length > 0) {
     console.warn('Email QA violations:', qa.violations);
-    // Log violations but continue — operator reviews before approving
   }
 
-  // Build unsubscribe token
-  const unsubToken = Buffer.from(`${contactId}:${contact.email}`).toString('base64url');
-  const unsubUrl = `${appUrl}/unsubscribe/${unsubToken}`;
-
-  // Inject tracking pixel + unsubscribe
-  const trackingPixel = `<img src="${appUrl}/api/track/${emailId}.gif" width="1" height="1" style="display:none" alt="" />`;
-  const footer = `<br/><br/><p style="font-size:11px;color:#999">To unsubscribe, <a href="${unsubUrl}">click here</a>.</p>`;
-  const finalHtml = emailDraft.htmlBody + trackingPixel + footer;
+  const finalHtml = buildEmailHtml(emailDraft.htmlBody, emailId, contactId, contact.email, appUrl);
 
   const { conversationId: msgId } = await sendEmail({
     fromName: senderName,
@@ -111,20 +107,19 @@ export async function outreachInitialProcessor(data: OutreachInitialJobData): Pr
   await prisma.$transaction([
     prisma.email.update({
       where: { id: emailId },
-      data: { resendMessageId: msgId, status: 'sent', sentAt: now, subject: emailDraft.subject, htmlBody: finalHtml },
+      data: { resendMessageId: msgId, status: 'sent', sentAt: now, subject: emailDraft.subject, htmlBody: finalHtml, fromName: senderName, fromEmail: senderEmail },
     }),
     prisma.outreachThread.update({
       where: { id: threadId },
       data: {
         state: 'INITIAL_SENT',
-        nextActionAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000), // Day +3
+        nextActionAt: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000),
       },
     }),
     prisma.prospect.update({
       where: { id: prospectId },
       data: { status: 'OUTREACH_SENT' },
     }),
-    // Increment daily cap
     prisma.dailyEmailLimit.upsert({
       where: { orgId_date: { orgId, date: today } },
       update: { newOutboundSent: { increment: 1 } },

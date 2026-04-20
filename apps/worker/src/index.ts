@@ -9,6 +9,7 @@ import { outreachInitialProcessor } from './processors/outreach-initial.processo
 import { outreachFollowupProcessor } from './processors/outreach-followup.processor';
 import { workflowProcessor } from './processors/workflow.processor';
 import { enrichProcessor } from './processors/enrich.processor';
+import { sourceProcessor } from './processors/source.processor';
 import { runFollowupScheduler } from './processors/followup-scheduler';
 
 const env = getEnv(); // Validates env on startup — fails fast if missing vars
@@ -35,6 +36,7 @@ function makeWorker<T>(queueName: string, processor: (data: T) => Promise<void>)
 // Start all workers
 const workers = [
   makeWorker(QUEUE_NAMES.PROSPECT_ENRICH, enrichProcessor),
+  makeWorker(QUEUE_NAMES.PROSPECT_SOURCE, sourceProcessor),
   makeWorker(QUEUE_NAMES.AUDIT_CRAWL, auditCrawlProcessor),
   makeWorker(QUEUE_NAMES.AUDIT_EVALUATE, auditEvaluateProcessor),
   makeWorker(QUEUE_NAMES.REPORT_GENERATE, reportProcessor),

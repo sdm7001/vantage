@@ -26,7 +26,8 @@ export async function crawlDomain(domain: string): Promise<CrawlBundle> {
     const urlsToCrawl = [url];
     const crawledUrls = new Set<string>();
 
-    for (const pageUrl of urlsToCrawl.slice(0, MAX_PAGES)) {
+    for (let crawlIdx = 0; crawlIdx < urlsToCrawl.length && crawlIdx < MAX_PAGES; crawlIdx++) {
+      const pageUrl = urlsToCrawl[crawlIdx];
       if (crawledUrls.has(pageUrl)) continue;
       crawledUrls.add(pageUrl);
 

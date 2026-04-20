@@ -2,18 +2,21 @@ import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
 import { Queue } from 'bullmq';
-import IORedis from 'ioredis';
 import { QUEUE_NAMES, JOB_OPTIONS } from '@vantage/queue';
-import { getEnv } from '@vantage/config';
+import { getRedis } from '../lib/redis';
 
-function getRedis() {
-  const env = getEnv();
-  return new IORedis(env.UPSTASH_REDIS_URL, {
-    password: env.UPSTASH_REDIS_TOKEN,
-    tls: { rejectUnauthorized: true },
-    maxRetriesPerRequest: null,
-    enableReadyCheck: false,
-  });
+function parseCsvLine(line: string): string[] {
+  const cells: string[] = [];
+  let cur = '';
+  let inQuote = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQuote = !inQuote; continue; }
+    if (ch === ',' && !inQuote) { cells.push(cur.trim()); cur = ''; continue; }
+    cur += ch;
+  }
+  cells.push(cur.trim());
+  return cells;
 }
 
 export const prospectsRouter = router({
@@ -176,5 +179,178 @@ export const prospectsRouter = router({
       });
 
       return { success: true };
+    }),
+
+  markConverted: protectedProcedure
+    .input(z.object({ prospectId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const prospect = await ctx.prisma.prospect.findFirst({
+        where: { id: input.prospectId, orgId: ctx.orgId },
+      });
+      if (!prospect) throw new TRPCError({ code: 'NOT_FOUND' });
+      return ctx.prisma.prospect.update({
+        where: { id: input.prospectId },
+        data: { status: 'CONVERTED' },
+      });
+    }),
+
+  addContact: protectedProcedure
+    .input(z.object({
+      prospectId: z.string(),
+      firstName: z.string().optional(),
+      lastName: z.string().optional(),
+      email: z.string().email(),
+      title: z.string().optional(),
+      isPrimary: z.boolean().default(false),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const prospect = await ctx.prisma.prospect.findFirst({
+        where: { id: input.prospectId, orgId: ctx.orgId },
+      });
+      if (!prospect) throw new TRPCError({ code: 'NOT_FOUND' });
+
+      // Check suppression
+      const suppressed = await ctx.prisma.suppressionEntry.findFirst({
+        where: { orgId: ctx.orgId, type: 'EMAIL', value: input.email.toLowerCase() },
+      });
+      if (suppressed) throw new TRPCError({ code: 'BAD_REQUEST', message: 'This email is on the suppression list' });
+
+      if (input.isPrimary) {
+        await ctx.prisma.contact.updateMany({
+          where: { prospectId: input.prospectId, isPrimary: true },
+          data: { isPrimary: false },
+        });
+      }
+
+      return ctx.prisma.contact.create({
+        data: {
+          prospectId: input.prospectId,
+          firstName: input.firstName ?? null,
+          lastName: input.lastName ?? null,
+          email: input.email.toLowerCase().trim(),
+          title: input.title ?? null,
+          isPrimary: input.isPrimary,
+          emailSource: 'manual',
+        },
+      });
+    }),
+
+  removeContact: protectedProcedure
+    .input(z.object({ contactId: z.string(), prospectId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const contact = await ctx.prisma.contact.findFirst({
+        where: { id: input.contactId, prospectId: input.prospectId, prospect: { orgId: ctx.orgId } },
+      });
+      if (!contact) throw new TRPCError({ code: 'NOT_FOUND' });
+      await ctx.prisma.contact.delete({ where: { id: input.contactId } });
+      return { success: true };
+    }),
+
+  setContactPrimary: protectedProcedure
+    .input(z.object({ contactId: z.string(), prospectId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const contact = await ctx.prisma.contact.findFirst({
+        where: { id: input.contactId, prospectId: input.prospectId, prospect: { orgId: ctx.orgId } },
+      });
+      if (!contact) throw new TRPCError({ code: 'NOT_FOUND' });
+      await ctx.prisma.contact.updateMany({
+        where: { prospectId: input.prospectId, isPrimary: true },
+        data: { isPrimary: false },
+      });
+      await ctx.prisma.contact.update({
+        where: { id: input.contactId },
+        data: { isPrimary: true },
+      });
+      return { success: true };
+    }),
+
+  importCsv: protectedProcedure
+    .input(z.object({
+      csv: z.string().max(500_000),
+      triggerPipeline: z.boolean().default(false),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const lines = input.csv.split('\n').map(l => l.trim()).filter(Boolean);
+      if (lines.length < 2) throw new TRPCError({ code: 'BAD_REQUEST', message: 'CSV must have a header row and at least one data row' });
+
+      const header = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/^"|"$/g, ''));
+      const col = (name: string) => header.indexOf(name);
+
+      const domainIdx = col('domain');
+      if (domainIdx === -1) throw new TRPCError({ code: 'BAD_REQUEST', message: 'CSV must have a "domain" column' });
+
+      const companyNameIdx = col('companyname');
+      const contactEmailIdx = col('contactemail');
+      const contactNameIdx = col('contactname');
+      const contactTitleIdx = col('contacttitle');
+
+      // Get suppressions and existing domains for dedup
+      const [suppressions, existing] = await Promise.all([
+        ctx.prisma.suppressionEntry.findMany({ where: { orgId: ctx.orgId, type: 'DOMAIN' }, select: { value: true } }),
+        ctx.prisma.prospect.findMany({ where: { orgId: ctx.orgId }, select: { domain: true } }),
+      ]);
+      const suppressedDomains = new Set(suppressions.map((s: { value: string }) => s.value));
+      const existingDomains = new Set(existing.map((p: { domain: string }) => p.domain));
+
+      let imported = 0;
+      let skipped = 0;
+      let failed = 0;
+
+      for (const line of lines.slice(1)) {
+        if (!line) continue;
+        const cells = parseCsvLine(line);
+        const rawDomain = cells[domainIdx] ?? '';
+        const domain = rawDomain.replace(/^https?:\/\//, '').replace(/\/$/, '').replace(/^www\./, '').toLowerCase().trim();
+
+        if (!domain || !domain.includes('.')) { failed++; continue; }
+        if (existingDomains.has(domain) || suppressedDomains.has(domain)) { skipped++; continue; }
+
+        try {
+          const prospect = await ctx.prisma.prospect.create({
+            data: {
+              orgId: ctx.orgId,
+              domain,
+              companyName: companyNameIdx >= 0 ? (cells[companyNameIdx] ?? undefined) : undefined,
+              status: 'NEW',
+            },
+          });
+          existingDomains.add(domain);
+
+          const contactEmail = contactEmailIdx >= 0 ? cells[contactEmailIdx] : undefined;
+          if (contactEmail && contactEmail.includes('@')) {
+            const fullName = contactNameIdx >= 0 ? cells[contactNameIdx] ?? '' : '';
+            const [firstName, ...rest] = fullName.split(' ');
+            await ctx.prisma.contact.create({
+              data: {
+                prospectId: prospect.id,
+                email: contactEmail.toLowerCase().trim(),
+                firstName: firstName || null,
+                lastName: rest.join(' ') || null,
+                title: contactTitleIdx >= 0 ? (cells[contactTitleIdx] ?? null) : null,
+                isPrimary: true,
+                emailSource: 'csv_import',
+              },
+            });
+          }
+
+          if (input.triggerPipeline) {
+            const workflowRun = await ctx.prisma.workflowRun.create({
+              data: { orgId: ctx.orgId, prospectId: prospect.id, type: 'full_pipeline', status: 'running' },
+            });
+            const redis = getRedis();
+            const queue = new Queue(QUEUE_NAMES.WORKFLOW_ORCHESTRATE, { connection: redis });
+            await queue.add('workflow', {
+              orgId: ctx.orgId, prospectId: prospect.id, workflowRunId: workflowRun.id,
+              runEnrich: true, runAudit: true, runReport: true, runOutreach: false,
+            }, JOB_OPTIONS[QUEUE_NAMES.WORKFLOW_ORCHESTRATE]);
+          }
+
+          imported++;
+        } catch {
+          failed++;
+        }
+      }
+
+      return { imported, skipped, failed, total: lines.length - 1 };
     }),
 });

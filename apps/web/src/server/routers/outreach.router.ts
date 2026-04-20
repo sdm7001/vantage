@@ -2,19 +2,8 @@ import { z } from 'zod';
 import { router, protectedProcedure } from '../trpc';
 import { TRPCError } from '@trpc/server';
 import { Queue } from 'bullmq';
-import IORedis from 'ioredis';
 import { QUEUE_NAMES, JOB_OPTIONS } from '@vantage/queue';
-import { getEnv } from '@vantage/config';
-
-function getRedis() {
-  const env = getEnv();
-  const isUpstash = env.UPSTASH_REDIS_URL.startsWith('rediss://');
-  return new IORedis(env.UPSTASH_REDIS_URL, {
-    ...(isUpstash && { password: env.UPSTASH_REDIS_TOKEN, tls: { rejectUnauthorized: true } }),
-    maxRetriesPerRequest: null,
-    enableReadyCheck: false,
-  });
-}
+import { getRedis } from '../lib/redis';
 
 export const outreachRouter = router({
   getThread: protectedProcedure
@@ -132,4 +121,83 @@ export const outreachRouter = router({
         data: { pausedAt: new Date(), pausedReason: input.reason, nextActionAt: null },
       });
     }),
+
+  resumeThread: protectedProcedure
+    .input(z.object({ threadId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const thread = await ctx.prisma.outreachThread.findFirst({
+        where: { id: input.threadId, prospect: { orgId: ctx.orgId } },
+      });
+      if (!thread) throw new TRPCError({ code: 'NOT_FOUND' });
+      return ctx.prisma.outreachThread.update({
+        where: { id: input.threadId },
+        data: { pausedAt: null, pausedReason: null },
+      });
+    }),
+
+  completeThread: protectedProcedure
+    .input(z.object({ threadId: z.string() }))
+    .mutation(async ({ ctx, input }) => {
+      const thread = await ctx.prisma.outreachThread.findFirst({
+        where: { id: input.threadId, prospect: { orgId: ctx.orgId } },
+      });
+      if (!thread) throw new TRPCError({ code: 'NOT_FOUND' });
+      return ctx.prisma.outreachThread.update({
+        where: { id: input.threadId },
+        data: { state: 'COMPLETED', nextActionAt: null, pausedAt: null, pausedReason: null },
+      });
+    }),
+
+  listThreads: protectedProcedure
+    .input(z.object({
+      state: z.string().optional(),
+      campaignId: z.string().optional(),
+      limit: z.number().min(1).max(100).default(60),
+    }))
+    .query(async ({ ctx, input }) => {
+      const TERMINAL = ['COMPLETED', 'REPLIED', 'OPTED_OUT', 'BOUNCED', 'SUPPRESSED'];
+      return ctx.prisma.outreachThread.findMany({
+        where: {
+          prospect: { orgId: ctx.orgId },
+          ...(input.state === 'active'
+            ? { state: { notIn: TERMINAL as never[] }, pausedAt: null }
+            : input.state === 'terminal'
+            ? { state: { in: TERMINAL as never[] } }
+            : input.state
+            ? { state: input.state as never }
+            : {}),
+          ...(input.campaignId ? { campaignId: input.campaignId } : {}),
+        },
+        orderBy: { updatedAt: 'desc' },
+        take: input.limit,
+        include: {
+          prospect: { select: { id: true, companyName: true, domain: true, status: true } },
+          campaign: { select: { id: true, name: true } },
+          emails: {
+            orderBy: { sequenceIndex: 'asc' },
+            include: {
+              events: { select: { type: true, createdAt: true }, orderBy: { createdAt: 'desc' }, take: 5 },
+            },
+          },
+        },
+      });
+    }),
+
+  listPendingApproval: protectedProcedure.query(async ({ ctx }) => {
+    // Prospects with a ready report but no outreach thread yet
+    return ctx.prisma.prospect.findMany({
+      where: {
+        orgId: ctx.orgId,
+        status: 'REPORT_READY' as never,
+        reports: { some: { status: 'ready' } },
+        threads: { none: {} },
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 50,
+      include: {
+        contacts: { where: { isPrimary: true }, take: 1 },
+        reports: { where: { status: 'ready' }, orderBy: { createdAt: 'desc' }, take: 1, include: { audit: { select: { overallScore: true } } } },
+      },
+    });
+  }),
 });

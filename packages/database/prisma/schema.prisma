@@ -42,6 +42,8 @@ enum OutreachState {
   FOLLOWUP_3_SENT
   FOLLOWUP_4_QUEUED
   FOLLOWUP_4_SENT
+  FOLLOWUP_5_QUEUED
+  FOLLOWUP_5_SENT
   COMPLETED
   REPLIED
   OPTED_OUT
@@ -421,4 +423,46 @@ model AnalyticsEvent {
 
   @@index([orgId, eventType, createdAt])
   @@map("analytics_events")
+}
+
+// ─── Attribution ──────────────────────────────────────────────────────────────
+
+model LandingPageVisit {
+  id          String   @id @default(cuid())
+  orgId       String?
+  prospectId  String?
+  contactId   String?
+  emailId     String?
+  ipAddress   String?  @db.VarChar(45)
+  userAgent   String?  @db.Text
+  referrer    String?  @db.Text
+  utmSource   String?  @db.VarChar(100)
+  utmMedium   String?  @db.VarChar(100)
+  utmCampaign String?  @db.VarChar(100)
+  utmContent  String?  @db.VarChar(191)
+  createdAt   DateTime @default(now())
+
+  @@index([orgId, emailId])
+  @@index([orgId, prospectId])
+  @@map("landing_page_visits")
+}
+
+// ─── ICP Profiles ─────────────────────────────────────────────────────────────
+
+model IcpProfile {
+  id           String   @id @default(cuid())
+  orgId        String
+  name         String   @db.VarChar(191)
+  industries   Json     @default("[]")
+  cities       Json     @default("[]")
+  states       Json     @default("[]")
+  minEmployees Int?
+  maxEmployees Int?
+  keywords     Json     @default("[]")
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@index([orgId])
+  @@map("icp_profiles")
 }

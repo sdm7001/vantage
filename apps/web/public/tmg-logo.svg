@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 210 58" fill="none">
+  <!-- Icon: two interlocking arcs (matches TMG brand mark) -->
+  <g transform="translate(4,4)">
+    <!-- Outer arc: maroon, large sweep counterclockwise from lower-right to upper-left -->
+    <path d="M 46 29 A 24 24 0 1 0 25 4"
+          stroke="#8B1E1E" stroke-width="5.5" stroke-linecap="round" fill="none"/>
+    <!-- Inner arc: blue, large sweep clockwise from upper-right to lower-left -->
+    <path d="M 4 29 A 17 17 0 1 1 25 47"
+          stroke="#1565C0" stroke-width="5.5" stroke-linecap="round" fill="none"/>
+  </g>
+  <!-- T in TMG blue -->
+  <text x="70" y="43"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="30" font-weight="700" fill="#1565C0"
+        letter-spacing="2">T</text>
+  <!-- MG in TMG maroon -->
+  <text x="94" y="43"
+        font-family="Arial, Helvetica, sans-serif"
+        font-size="30" font-weight="700" fill="#8B1E1E"
+        letter-spacing="2">MG</text>
+</svg>

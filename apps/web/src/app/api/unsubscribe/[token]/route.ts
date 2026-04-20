@@ -1,7 +1,7 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@vantage/database';
 
-export async function GET(req: NextRequest, { params }: { params: Promise<{ token: string }> }) {
+export async function GET(_req: Request, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params;
 
   let contactId: string;
@@ -41,6 +41,8 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
     }),
   ]);
 
+  const safeEmail = email.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+
   return new NextResponse(`
 <!DOCTYPE html>
 <html>
@@ -50,7 +52,7 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ toke
 h2{color:#0f172a}p{color:#64748b;font-size:14px}</style></head>
 <body><div class="card">
   <h2>You've been unsubscribed</h2>
-  <p>We've removed ${email} from our outreach list. You won't hear from us again.</p>
+  <p>We've removed ${safeEmail} from our outreach list. You won't hear from us again.</p>
 </div></body></html>`, {
     headers: { 'Content-Type': 'text/html' },
   });

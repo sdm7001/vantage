@@ -14,7 +14,7 @@ export async function runFollowupScheduler(): Promise<void> {
     where: {
       nextActionAt: { lte: now },
       state: {
-        in: ['INITIAL_SENT', 'FOLLOWUP_1_SENT', 'FOLLOWUP_2_SENT', 'FOLLOWUP_3_SENT'],
+        in: ['INITIAL_SENT', 'FOLLOWUP_1_SENT', 'FOLLOWUP_2_SENT', 'FOLLOWUP_3_SENT', 'FOLLOWUP_4_SENT'],
       },
     },
     include: {
@@ -39,11 +39,12 @@ export async function runFollowupScheduler(): Promise<void> {
     FOLLOWUP_1_SENT: 2,
     FOLLOWUP_2_SENT: 3,
     FOLLOWUP_3_SENT: 4,
+    FOLLOWUP_4_SENT: 5,
   };
 
   for (const thread of dueThreads) {
     const nextStep = STATE_TO_NEXT_STEP[thread.state];
-    if (!nextStep || nextStep > 4) continue;
+    if (!nextStep || nextStep > 5) continue;
 
     const contact = thread.prospect.contacts[0];
     if (!contact) {

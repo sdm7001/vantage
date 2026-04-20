@@ -1,27 +1,33 @@
 import { callClaudeJSON, MODELS } from '../lib/claude';
 import type { FollowupContext, EmailDraft } from '@vantage/shared';
 
-const FOLLOWUP_ANGLES: Record<number, { name: string; instruction: string }> = {
-  1: {
-    name: 'new_pain_point',
-    instruction: 'Bring up a different finding from the audit that you didn\'t mention in the first email. Keep it brief — 2 short paragraphs.',
-  },
-  2: {
-    name: 'social_proof',
-    instruction: 'Reference a relevant Houston business success story or a before/after improvement TexMG achieved for a similar company. Make it specific — no vague claims.',
-  },
-  3: {
-    name: 'value_add_tip',
-    instruction: 'Share one actionable tip related to their biggest audit gap. Don\'t pitch. Just give value. End with a soft "if you\'d like more like this..." offer.',
-  },
-  4: {
-    name: 'break_up',
-    instruction: 'Short break-up email. Acknowledge they\'re busy. Offer one final resource (the audit report link). No hard sell. Close the loop gracefully.',
-  },
-};
+function getFollowupAngles(senderCompany: string): Record<number, { name: string; instruction: string }> {
+  return {
+    1: {
+      name: 'new_pain_point',
+      instruction: 'Bring up a different finding from the audit that you didn\'t mention in the first email. Keep it brief — 2 short paragraphs.',
+    },
+    2: {
+      name: 'social_proof',
+      instruction: `Reference a relevant success story or before/after improvement ${senderCompany} achieved for a similar business. Make it specific — no vague claims.`,
+    },
+    3: {
+      name: 'value_add_tip',
+      instruction: 'Share one actionable tip related to their biggest audit gap. Don\'t pitch. Just give value. End with a soft "if you\'d like more like this..." offer.',
+    },
+    4: {
+      name: 'roi_proof',
+      instruction: `Share a concrete before/after ROI example — faster load time, better rankings, or more leads — from a comparable business ${senderCompany} helped. Keep it one short paragraph. End with a clear single CTA to book a 15-minute call.`,
+    },
+    5: {
+      name: 'break_up',
+      instruction: 'Short break-up email. Acknowledge they\'re busy. Offer one final resource (the audit report link). No hard sell. Close the loop gracefully.',
+    },
+  };
+}
 
 export async function runFollowupCopyAgent(ctx: FollowupContext): Promise<EmailDraft> {
-  const angle = FOLLOWUP_ANGLES[ctx.sequenceIndex];
+  const angle = getFollowupAngles(ctx.senderCompany)[ctx.sequenceIndex];
 
   const result = await callClaudeJSON<EmailDraft>({
     model: MODELS.HAIKU,

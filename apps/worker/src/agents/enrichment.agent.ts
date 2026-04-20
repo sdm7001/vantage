@@ -88,7 +88,7 @@ async function crawlEnrichmentPages(baseUrl: string): Promise<string> {
       `${baseUrl}/contact`,
     ];
 
-    for (const pageUrl of pagesToCheck.slice(0, 4)) {
+    for (const pageUrl of pagesToCheck) {
       const page = await context.newPage();
       try {
         const res = await page.goto(pageUrl, { waitUntil: 'domcontentloaded', timeout: 15_000 });

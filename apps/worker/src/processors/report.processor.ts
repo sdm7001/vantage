@@ -6,6 +6,8 @@ import { runReportWriterAgent } from '../agents/report-writer.agent';
 import { runQaGuardrails } from '../agents/qa-guardrails.agent';
 import { generateReportPDF } from '../lib/pdf';
 import { uploadBuffer, uploadJson, buildR2Key, getSignedDownloadUrl } from '../lib/r2';
+import type { DimensionScore, WeightedScore, AuditCategory } from '@vantage/shared';
+import { CATEGORY_WEIGHTS } from '@vantage/shared';
 
 export async function reportProcessor(data: ReportGenerateJobData): Promise<void> {
   const { prospectId, auditId, reportId } = data;
@@ -20,10 +22,17 @@ export async function reportProcessor(data: ReportGenerateJobData): Promise<void
     where: { prospectId, isPrimary: true },
   }) ?? await prisma.contact.findFirst({ where: { prospectId } });
 
-  const brand = prospect.organization.brandConfig ?? {
+  const rawBrand = prospect.organization.brandConfig ?? {
     companyName: 'TexMG', senderName: 'Scott', senderEmail: 'scott@texmg.com',
-    bookingUrl: null, primaryColor: '#1a1a2e', accentColor: '#3b82f6',
+    bookingUrl: null, primaryColor: '#1a1a2e', accentColor: '#1565C0', logoR2Key: null,
   };
+
+  // Resolve logo URL: R2 upload takes priority; fall back to the public app asset
+  const logoUrl = rawBrand.logoR2Key
+    ? `${process.env.R2_PUBLIC_URL ?? ''}/${rawBrand.logoR2Key}`
+    : `${process.env.NEXT_PUBLIC_APP_URL ?? ''}/tmg-logo.svg`;
+
+  const brand = { ...rawBrand, logoUrl };
 
   // Build WeightedScore from stored dimension scores
   const { weightedScore, allDimensions } = buildWeightedScoreFromDb(dimensionScores, audit.overallScore ?? 0);
@@ -126,8 +135,6 @@ export async function reportProcessor(data: ReportGenerateJobData): Promise<void
   console.log(`Report ${reportId} generated and uploaded: ${pdfKey}`);
 }
 
-import type { DimensionScore, WeightedScore, AuditCategory } from '@vantage/shared';
-import { CATEGORY_WEIGHTS } from '@vantage/shared';
 type DbDimensionScore = { dimension: string; category: string; score: number; wins: unknown; criticalFixes: unknown; notes: string | null };
 
 function buildWeightedScoreFromDb(

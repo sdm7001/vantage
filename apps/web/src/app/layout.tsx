@@ -4,8 +4,8 @@ import { Providers } from '../components/Providers';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Vantage — Website Intelligence & Outreach',
-  description: 'Audit prospects\' websites and lead with evidence before you pitch.',
+  title: 'TMG — Audit-First Website Intelligence & Growth',
+  description: 'TMG audits your website across 36 dimensions and delivers a scored report with prioritized fixes. Website redesign, SEO, and AI search optimization for Texas businesses.',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

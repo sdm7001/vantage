@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { trpc } from '../../../lib/trpc';
+import CsvImport from './CsvImport';
 
 const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   NEW:                { bg: '#f1f5f9', text: '#64748b' },
-  ENRICHING:          { bg: '#eff6ff', text: '#3b82f6' },
+  ENRICHING:          { bg: '#eff6ff', text: '#1565C0' },
   ENRICHED:           { bg: '#eef2ff', text: '#6366f1' },
   AUDITING:           { bg: '#fffbeb', text: '#d97706' },
   AUDITED:            { bg: '#fff7ed', text: '#f97316' },
@@ -16,6 +17,7 @@ const STATUS_COLORS: Record<string, { bg: string; text: string }> = {
   OUTREACH_SENT:      { bg: '#e0f2fe', text: '#0284c7' },
   ENGAGED:            { bg: '#f7fee7', text: '#65a30d' },
   CONVERTED:          { bg: '#dcfce7', text: '#15803d' },
+  UNSUBSCRIBED:       { bg: '#fef2f2', text: '#b91c1c' },
   SUPPRESSED:         { bg: '#f9fafb', text: '#9ca3af' },
   ARCHIVED:           { bg: '#f9fafb', text: '#9ca3af' },
 };
@@ -58,6 +60,7 @@ export default function ProspectsPage() {
     'NEW', 'ENRICHING', 'ENRICHED', 'AUDITING', 'AUDITED',
     'REPORT_GENERATING', 'REPORT_READY', 'OUTREACH_QUEUED',
     'OUTREACH_SENT', 'ENGAGED', 'CONVERTED',
+    'UNSUBSCRIBED', 'SUPPRESSED', 'ARCHIVED',
   ];
 
   return (
@@ -70,10 +73,14 @@ export default function ProspectsPage() {
             Audit websites and launch personalized outreach
           </p>
         </div>
-        <div style={{ fontSize: '13px', color: '#64748b' }}>
-          {prospects?.length ?? 0} prospects
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <span style={{ fontSize: '13px', color: '#64748b' }}>
+            {prospects?.length === 50 ? '50+ prospects' : `${prospects?.length ?? 0} prospect${prospects?.length !== 1 ? 's' : ''}`}
+          </span>
         </div>
       </div>
+
+      <CsvImport onImported={() => void refetch()} />
 
       {/* Add prospect */}
       <div style={{ background: 'white', border: '1px solid #e2e8f0', borderRadius: '10px', padding: '20px', marginBottom: '20px' }}>
@@ -92,7 +99,7 @@ export default function ProspectsPage() {
           <button
             disabled={adding || !domain.trim()}
             onClick={() => void handleAdd()}
-            style={{ background: adding ? '#94a3b8' : '#3b82f6', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 20px', fontWeight: 600, cursor: adding ? 'default' : 'pointer', fontSize: '14px', whiteSpace: 'nowrap' }}
+            style={{ background: adding ? '#94a3b8' : '#1565C0', color: 'white', border: 'none', borderRadius: '6px', padding: '8px 20px', fontWeight: 600, cursor: adding ? 'default' : 'pointer', fontSize: '14px', whiteSpace: 'nowrap' }}
           >
             {adding ? '⏳ Adding…' : '⚡ Add + Full Pipeline'}
           </button>

@@ -54,3 +54,12 @@ export function getPublicUrl(key: string): string {
 export function buildR2Key(prefix: string, id: string, filename: string): string {
   return `${prefix}/${id}/${filename}`;
 }
+
+export async function downloadJson<T = unknown>(key: string): Promise<T> {
+  const env = getEnv();
+  const client = getR2Client();
+  const res = await client.send(new GetObjectCommand({ Bucket: env.R2_BUCKET_NAME, Key: key }));
+  const chunks: Uint8Array[] = [];
+  for await (const chunk of res.Body as AsyncIterable<Uint8Array>) chunks.push(chunk);
+  return JSON.parse(Buffer.concat(chunks).toString('utf-8')) as T;
+}

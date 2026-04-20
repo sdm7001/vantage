@@ -1,9 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-
-// Inline minimal fetch wrappers (no tRPC client set up yet — call route handlers directly)
-// These call the tRPC HTTP endpoint directly to avoid needing a full tRPC React setup.
+import { useRouter } from 'next/navigation';
 
 async function trpcMutate(path: string, input: unknown) {
   const res = await fetch(`/api/trpc/${path}`, {
@@ -20,11 +18,14 @@ async function trpcMutate(path: string, input: unknown) {
 
 interface Props {
   prospectId: string;
-  orgId: string;
   reportToken?: string;
+  threadId?: string;
+  threadPaused?: boolean;
+  threadState?: string;
 }
 
-export default function ProspectActions({ prospectId, orgId, reportToken }: Props) {
+export default function ProspectActions({ prospectId, reportToken, threadId, threadPaused, threadState }: Props) {
+  const router = useRouter();
   const [loading, setLoading] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -36,7 +37,7 @@ export default function ProspectActions({ prospectId, orgId, reportToken }: Prop
     try {
       await fn();
       setSuccess(`${label} started`);
-      setTimeout(() => { setSuccess(null); window.location.reload(); }, 2000);
+      setTimeout(() => { setSuccess(null); router.refresh(); }, 2000);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Something went wrong');
     } finally {
@@ -50,7 +51,7 @@ export default function ProspectActions({ prospectId, orgId, reportToken }: Prop
         <button
           disabled={!!loading}
           onClick={() => run('Audit', () => trpcMutate('prospects.triggerAudit', { prospectId }))}
-          style={btnStyle('#3b82f6')}
+          style={btnStyle('#1565C0')}
         >
           {loading === 'Audit' ? '⏳' : '🔍'} Run Audit
         </button>
@@ -71,6 +72,50 @@ export default function ProspectActions({ prospectId, orgId, reportToken }: Prop
         >
           {loading === 'Outreach' ? '⏳' : '✉'} Approve Outreach
         </button>
+
+        <button
+          disabled={!!loading}
+          onClick={() => run('Report', () => trpcMutate('reports.regenerate', { prospectId }))}
+          style={btnStyle('#0891b2')}
+        >
+          {loading === 'Report' ? '⏳' : '📄'} Regenerate Report
+        </button>
+
+        <button
+          disabled={!!loading}
+          onClick={() => run('Converted', () => trpcMutate('prospects.markConverted', { prospectId }))}
+          style={btnStyle('#0891b2')}
+        >
+          {loading === 'Converted' ? '⏳' : '🏆'} Mark Converted
+        </button>
+
+        {threadId && threadPaused && (
+          <button
+            disabled={!!loading}
+            onClick={() => run('Resume', () => trpcMutate('outreach.resumeThread', { threadId }))}
+            style={btnStyle('#16a34a')}
+          >
+            {loading === 'Resume' ? '⏳' : '▶'} Resume Thread
+          </button>
+        )}
+        {threadId && !threadPaused && !['COMPLETED', 'REPLIED', 'OPTED_OUT', 'BOUNCED', 'SUPPRESSED'].includes(threadState ?? '') && (
+          <button
+            disabled={!!loading}
+            onClick={() => run('Pause', () => trpcMutate('outreach.pauseThread', { threadId, reason: 'manually paused' }))}
+            style={btnStyle('#f59e0b')}
+          >
+            {loading === 'Pause' ? '⏳' : '⏸'} Pause Thread
+          </button>
+        )}
+        {threadId && !['COMPLETED', 'REPLIED', 'OPTED_OUT', 'BOUNCED', 'SUPPRESSED'].includes(threadState ?? '') && (
+          <button
+            disabled={!!loading}
+            onClick={() => run('Complete', () => trpcMutate('outreach.completeThread', { threadId }))}
+            style={btnStyle('#64748b')}
+          >
+            {loading === 'Complete' ? '⏳' : '✓'} Complete Thread
+          </button>
+        )}
 
         <button
           disabled={!!loading}
@@ -108,6 +153,5 @@ function btnStyle(bg: string): React.CSSProperties {
     fontSize: '12px',
     fontWeight: 600,
     cursor: 'pointer',
-    opacity: 1,
   };
 }

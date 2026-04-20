@@ -5,7 +5,9 @@
 :root {
   --brand-dark: #0f172a;
   --brand-mid: #1e293b;
-  --brand-accent: #3b82f6;
+  --brand-accent: #1565C0;   /* TMG brand blue */
+  --brand-maroon: #8B1E1E;   /* TMG brand maroon */
+  --brand-blue-soft: #4a9fd4; /* readable on dark bg */
 }
 
 body {

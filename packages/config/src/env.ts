@@ -24,13 +24,13 @@ const envSchema = z.object({
   R2_PUBLIC_URL: z.string().default(''),
 
   // Microsoft 365 (Graph API — used for outreach email sending)
-  M365_TENANT_ID: z.string().min(1, 'M365 tenant ID required'),
-  M365_CLIENT_ID: z.string().min(1, 'M365 client ID required'),
-  M365_CLIENT_SECRET: z.string().min(1, 'M365 client secret required'),
-  M365_FROM_EMAIL: z.string().email('M365 from email must be a valid email'),
+  M365_TENANT_ID: z.string().default(''),
+  M365_CLIENT_ID: z.string().default(''),
+  M365_CLIENT_SECRET: z.string().default(''),
+  M365_FROM_EMAIL: z.string().default('noreply@example.com'),
 
   // Anthropic
-  ANTHROPIC_API_KEY: z.string().min(1, 'Anthropic API key required'),
+  ANTHROPIC_API_KEY: z.string().default(''),
 
   // App
   NEXT_PUBLIC_APP_URL: z.string().url('App URL required'),
@@ -41,8 +41,8 @@ const envSchema = z.object({
   TEXMG_SENDER_NAME: z.string().default('Scott'),
   TEXMG_SENDER_EMAIL: z.string().email().default('scott@texmg.com'),
   TEXMG_BOOKING_URL: z.string().url().optional(),
-  TEXMG_PRIMARY_COLOR: z.string().default('#1a1a2e'),
-  TEXMG_ACCENT_COLOR: z.string().default('#3b82f6'),
+  TEXMG_PRIMARY_COLOR: z.string().default('#8B1E1E'),
+  TEXMG_ACCENT_COLOR: z.string().default('#1565C0'),
 
   // Optional: Google PageSpeed Insights API key
   PSI_API_KEY: z.string().optional(),

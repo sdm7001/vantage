@@ -54,11 +54,6 @@ export async function POST(req: Request) {
         prisma.emailEvent.create({
           data: { emailId: email.id, type: 'opened', createdAt: now },
         }),
-        // Transition thread to ENGAGED if it's in INITIAL_SENT
-        prisma.outreachThread.updateMany({
-          where: { emails: { some: { id: email.id } }, state: { in: ['INITIAL_SENT', 'FOLLOWUP_1_SENT', 'FOLLOWUP_2_SENT', 'FOLLOWUP_3_SENT', 'FOLLOWUP_4_SENT'] } },
-          data: {},
-        }),
         prisma.prospect.updateMany({
           where: { threads: { some: { emails: { some: { id: email.id } } } } },
           data: { status: 'ENGAGED' },

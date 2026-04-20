@@ -31,7 +31,7 @@ Return JSON:
   "htmlBody": "<p>full HTML email body with proper paragraph tags</p>",
   "textBody": "plain text version",
   "fromName": "${ctx.senderName}",
-  "fromEmail": "sender email"
+  "fromEmail": "${ctx.senderEmail}"
 }`,
     }],
     maxTokens: 800,
@@ -40,5 +40,6 @@ Return JSON:
   return {
     ...result,
     fromName: ctx.senderName,
+    fromEmail: ctx.senderEmail,
   };
 }
