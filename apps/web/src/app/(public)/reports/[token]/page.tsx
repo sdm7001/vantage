@@ -19,17 +19,17 @@ export default async function PublicReportPage({ params }: { params: Promise<{ t
 
   if (!report) notFound();
 
-  const brandConfig = await prisma.brandConfig.findFirst({
+  const brand = await prisma.brandConfig.findFirst({
     where: { orgId: report.prospect.orgId },
   });
 
   const reportData = report.jsonContent as Record<string, unknown> | null;
   const overallScore = (reportData?.overallScore as number) ?? 0;
   const company = report.prospect.companyName ?? report.prospect.domain;
-
-  const senderEmail = brandConfig?.senderEmail ?? 'hello@texmg.com';
-  const bookingUrl = brandConfig?.bookingUrl ?? null;
-  const brandName = brandConfig?.companyName ?? 'TexMG';
+  const companyName = brand?.companyName ?? 'TexMG';
+  const bookingUrl = brand?.bookingUrl ?? null;
+  const primaryColor = brand?.primaryColor ?? '#1565C0';
+  const senderEmail = brand?.senderEmail ?? 'hello@texmg.com';
 
   // Increment view count on page load (non-blocking)
   void prisma.prospectReport.update({
@@ -48,7 +48,7 @@ export default async function PublicReportPage({ params }: { params: Promise<{ t
       {/* Header */}
       <div style={{ background: '#0f172a', color: 'white', padding: '24px 40px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <div style={{ fontSize: '11px', color: '#4a9fd4', letterSpacing: '2px', fontWeight: 700 }}>COMPLIMENTARY ANALYSIS BY {brandName.toUpperCase()}</div>
+          <div style={{ fontSize: '11px', color: primaryColor, letterSpacing: '2px', fontWeight: 700 }}>COMPLIMENTARY ANALYSIS BY {companyName.toUpperCase()}</div>
           <div style={{ fontSize: '22px', fontWeight: 700, marginTop: '4px' }}>Website Marketing Audit</div>
           <div style={{ fontSize: '14px', color: '#94a3b8', marginTop: '4px' }}>{company}</div>
         </div>
@@ -59,7 +59,7 @@ export default async function PublicReportPage({ params }: { params: Promise<{ t
           </div>
           <a
             href={downloadUrl}
-            style={{ background: '#1565C0', color: 'white', padding: '10px 20px', borderRadius: '8px', textDecoration: 'none', fontWeight: 600, fontSize: '14px' }}
+            style={{ background: primaryColor, color: 'white', padding: '10px 20px', borderRadius: '8px', textDecoration: 'none', fontWeight: 600, fontSize: '14px' }}
           >
             ↓ Download PDF
           </a>
@@ -104,7 +104,7 @@ export default async function PublicReportPage({ params }: { params: Promise<{ t
         <div style={{ background: '#1e293b', color: 'white', borderRadius: '12px', padding: '32px', textAlign: 'center' }}>
           <h2 style={{ fontSize: '20px', fontWeight: 700, marginBottom: '12px' }}>Want to fix these gaps?</h2>
           <p style={{ color: '#94a3b8', fontSize: '14px', marginBottom: '20px' }}>
-            {brandName} helps businesses solve these exact issues — audit-backed redesigns, SEO, and AI search optimization.
+            {companyName} helps businesses solve these exact issues — audit-backed redesigns, SEO, and AI search optimization.
           </p>
           <div style={{ display: 'flex', gap: '12px', justifyContent: 'center', flexWrap: 'wrap' }}>
             {bookingUrl ? (
@@ -112,7 +112,7 @@ export default async function PublicReportPage({ params }: { params: Promise<{ t
                 href={bookingUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                style={{ background: '#1565C0', color: 'white', padding: '12px 28px', borderRadius: '8px', textDecoration: 'none', fontWeight: 600 }}
+                style={{ background: primaryColor, color: 'white', padding: '12px 28px', borderRadius: '8px', textDecoration: 'none', fontWeight: 600 }}
               >
                 Book a Free Strategy Call →
               </a>
@@ -120,7 +120,7 @@ export default async function PublicReportPage({ params }: { params: Promise<{ t
             <a
               href={`mailto:${senderEmail}?subject=Website Audit Follow-Up — ${company}`}
               style={{
-                background: bookingUrl ? '#0f172a' : '#1565C0',
+                background: bookingUrl ? '#0f172a' : primaryColor,
                 color: 'white', padding: '12px 28px', borderRadius: '8px',
                 textDecoration: 'none', fontWeight: 600,
                 border: bookingUrl ? '1px solid #334155' : 'none',

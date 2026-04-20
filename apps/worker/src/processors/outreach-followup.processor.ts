@@ -17,8 +17,8 @@ const NEXT_ACTION_DAYS: Record<number, number> = {
   1: 7,
   2: 14,
   3: 21,
-  4: 28,
-  5: 0,
+  4: 30,  // win-back at Day +30
+  5: 0,   // no further followups
 };
 
 export async function outreachFollowupProcessor(data: OutreachFollowupJobData): Promise<void> {
