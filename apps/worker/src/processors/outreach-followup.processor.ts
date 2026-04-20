@@ -46,7 +46,7 @@ export async function outreachFollowupProcessor(data: OutreachFollowupJobData): 
 
   const prospect = await prisma.prospect.findUniqueOrThrow({ where: { id: prospectId } });
   const { senderName, senderEmail, senderCompany, bookingUrl, appUrl } = resolveBrandSender(org.brandConfig, env);
-  const reportUrl = report ? `${appUrl}/reports/${report.publicToken}` : '';
+  const reportUrl = report ? `${appUrl}/r/${report.publicToken}` : '';
   const overallScore = (report?.jsonContent as { overallScore?: number } | null)?.overallScore ?? 0;
 
   const emailDraft = await runFollowupCopyAgent({

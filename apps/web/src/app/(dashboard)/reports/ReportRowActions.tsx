@@ -62,7 +62,7 @@ export default function ReportRowActions({ reportId, prospectId, publicToken, re
       {reportStatus === 'ready' && (
         <>
           <a
-            href={`/reports/${publicToken}`}
+            href={`/r/${publicToken}`}
             target="_blank"
             style={{
               fontSize: '11px', fontWeight: 600, color: '#1565C0',

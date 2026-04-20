@@ -82,7 +82,7 @@ export default async function ReportDetailPage({ params }: { params: Promise<{ i
     ? report.markdownContent.slice(0, 2000) + (report.markdownContent.length > 2000 ? '\n\n…' : '')
     : null;
 
-  const publicUrl = `/reports/${report.publicToken}`;
+  const publicUrl = `/r/${report.publicToken}`;
   const downloadUrl = `/api/reports/${report.publicToken}?download=1`;
 
   return (
