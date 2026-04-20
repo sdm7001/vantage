@@ -20,7 +20,7 @@ export default function SignInPage() {
       }}>
         <Link href="/" style={{ textDecoration: 'none', display: 'inline-block', marginBottom: '48px' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/tmg-logo.svg" alt="TMG" style={{ height: '32px', width: 'auto' }} />
+          <img src="/tmg-logo.png" alt="TMG" style={{ height: '32px', width: 'auto' }} />
         </Link>
 
         <div>

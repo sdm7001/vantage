@@ -81,7 +81,7 @@ export default function LandingPage() {
       <header style={{ background: T.navy, borderBottom: '1px solid #1e293b', position: 'sticky', top: 0, zIndex: 100 }}>
         <div style={{ maxWidth: '1100px', margin: '0 auto', padding: '0 40px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '64px' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/tmg-logo.svg" alt="TMG" style={{ height: '28px', width: 'auto' }} />
+          <img src="/tmg-logo.png" alt="TMG" style={{ height: '28px', width: 'auto' }} />
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
             <a href="#how-it-works" style={{ color: '#94a3b8', fontSize: '13px', fontWeight: 500, textDecoration: 'none', padding: '6px 12px' }}>How it works</a>
             <a href="#services" style={{ color: '#94a3b8', fontSize: '13px', fontWeight: 500, textDecoration: 'none', padding: '6px 12px' }}>Services</a>
@@ -411,7 +411,7 @@ export default function LandingPage() {
         <div style={{ maxWidth: '1100px', margin: '0 auto', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: '32px', paddingBottom: '32px' }}>
           <div>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/tmg-logo.svg" alt="TMG" style={{ height: '28px', width: 'auto', marginBottom: '12px' }} />
+            <img src="/tmg-logo.png" alt="TMG" style={{ height: '28px', width: 'auto', marginBottom: '12px' }} />
             <p style={{ fontSize: '13px', color: '#475569', margin: 0, maxWidth: '280px', lineHeight: 1.6 }}>
               Houston-based agency specializing in website redesign, SEO, and AI-search optimization for service businesses.
             </p>

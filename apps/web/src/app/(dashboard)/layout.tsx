@@ -27,7 +27,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <div style={{ padding: '20px 20px 18px', borderBottom: '1px solid #1e293b' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="/tmg-logo.svg"
+            src="/tmg-logo.png"
             alt="TMG"
             style={{ height: '34px', width: 'auto', display: 'block', marginBottom: '6px' }}
           />
