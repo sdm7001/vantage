@@ -9,16 +9,28 @@ export async function GET(req: NextRequest, { params }: { params: Promise<{ pixe
   const emailId = pixelId.replace('.gif', '');
 
   // Non-blocking — don't slow down the response
-  prisma.email.findFirst({ where: { id: emailId } }).then((email: { id: string } | null) => {
+  prisma.email.findFirst({
+    where: { id: emailId },
+    include: { thread: { select: { id: true, prospectId: true } } },
+  }).then(async (email: { id: string; thread: { id: string; prospectId: string } | null } | null) => {
     if (!email) return;
-    prisma.emailEvent.create({
+    await prisma.emailEvent.create({
       data: {
         emailId,
         type: 'opened',
         ipAddress: req.headers.get('x-forwarded-for') ?? req.headers.get('x-real-ip') ?? undefined,
         userAgent: req.headers.get('user-agent') ?? undefined,
       },
-    }).catch(() => {});
+    });
+    if (email.thread?.prospectId) {
+      await prisma.prospect.updateMany({
+        where: {
+          id: email.thread.prospectId,
+          status: { notIn: ['ENGAGED', 'CONVERTED', 'REPLIED', 'SUPPRESSED', 'UNSUBSCRIBED'] as never[] },
+        },
+        data: { status: 'ENGAGED' },
+      });
+    }
   }).catch(() => {});
 
   return new Response(PIXEL, {

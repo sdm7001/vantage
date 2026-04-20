@@ -47,6 +47,16 @@ export async function GET(req: NextRequest) {
         utmCampaign,
       },
     });
+
+    if (prospectId) {
+      await prisma.prospect.updateMany({
+        where: {
+          id: prospectId,
+          status: { notIn: ['ENGAGED', 'CONVERTED', 'SUPPRESSED', 'UNSUBSCRIBED'] as never[] },
+        },
+        data: { status: 'ENGAGED' },
+      });
+    }
   } catch {
     // Attribution is best-effort — never fail the page load
   }
