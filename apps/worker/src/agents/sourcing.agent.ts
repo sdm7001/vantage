@@ -19,26 +19,57 @@ export type DiscoveredProspect = {
   confidence: number; // 0-1 ICP match score
 };
 
+type RawResult = { domain: string; title: string; snippet: string };
+
 export async function runSourcingAgent(
   icp: IcpCriteria,
   limit = 20,
 ): Promise<DiscoveredProspect[]> {
   const env = getEnv();
   const client = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+  const hasGoogleCse = !!(env.GOOGLE_CSE_API_KEY && env.GOOGLE_CSE_CX);
 
-  // Build search queries
   const queries = buildSearchQueries(icp);
-  const rawResults: Array<{ domain: string; title: string; snippet: string }> = [];
+  const rawResults: RawResult[] = [];
 
-  // Fetch results for each query (DuckDuckGo Lite — no API key required)
-  for (const query of queries.slice(0, 3)) {
-    try {
-      const results = await fetchDuckDuckGoResults(query);
-      rawResults.push(...results);
-    } catch (err) {
-      console.warn(`[sourcing] DDG query failed: "${query}"`, err);
+  if (hasGoogleCse) {
+    const apiKey = env.GOOGLE_CSE_API_KEY!;
+    const cx = env.GOOGLE_CSE_CX!;
+
+    // Regular Google web search (returns company websites)
+    for (const query of queries.slice(0, 3)) {
+      try {
+        const results = await fetchGoogleResults(query, apiKey, cx);
+        rawResults.push(...results);
+      } catch (err) {
+        console.warn(`[sourcing] Google CSE query failed: "${query}"`, err);
+      }
+      await sleep(200);
     }
-    await sleep(500); // polite rate limit
+
+    // LinkedIn company search via Google (site:linkedin.com/company)
+    const linkedInQueries = buildLinkedInQueries(icp);
+    for (const query of linkedInQueries.slice(0, 2)) {
+      try {
+        const results = await fetchLinkedInViaGoogle(query, apiKey, cx);
+        rawResults.push(...results);
+      } catch (err) {
+        console.warn(`[sourcing] LinkedIn/Google query failed: "${query}"`, err);
+      }
+      await sleep(200);
+    }
+  } else {
+    // Fallback: DuckDuckGo (no API key required)
+    console.log('[sourcing] No Google CSE credentials — falling back to DuckDuckGo');
+    for (const query of queries.slice(0, 3)) {
+      try {
+        const results = await fetchDuckDuckGoResults(query);
+        rawResults.push(...results);
+      } catch (err) {
+        console.warn(`[sourcing] DDG query failed: "${query}"`, err);
+      }
+      await sleep(500);
+    }
   }
 
   if (rawResults.length === 0) return [];
@@ -96,6 +127,8 @@ Output only valid JSON lines, nothing else.`,
     .slice(0, limit);
 }
 
+// ─── Search query builders ─────────────────────────────────────────────────
+
 function buildSearchQueries(icp: IcpCriteria): string[] {
   const queries: string[] = [];
   const locationParts = [
@@ -117,9 +150,116 @@ function buildSearchQueries(icp: IcpCriteria): string[] {
   return [...new Set(queries)].slice(0, 6);
 }
 
-async function fetchDuckDuckGoResults(
+function buildLinkedInQueries(icp: IcpCriteria): string[] {
+  const queries: string[] = [];
+  const locationParts = [
+    ...(icp.cities ?? []),
+    ...(icp.states ?? []),
+  ];
+
+  for (const industry of icp.industries.slice(0, 2)) {
+    const location = locationParts[0] ?? '';
+    const keyword = icp.keywords?.[0] ?? '';
+    const parts = [industry, location, keyword].filter(Boolean);
+    queries.push(parts.join(' '));
+  }
+
+  return [...new Set(queries)].slice(0, 4);
+}
+
+// ─── Google Custom Search API ──────────────────────────────────────────────
+
+async function fetchGoogleResults(
   query: string,
-): Promise<Array<{ domain: string; title: string; snippet: string }>> {
+  apiKey: string,
+  cx: string,
+): Promise<RawResult[]> {
+  const url = new URL('https://www.googleapis.com/customsearch/v1');
+  url.searchParams.set('key', apiKey);
+  url.searchParams.set('cx', cx);
+  url.searchParams.set('q', query);
+  url.searchParams.set('num', '10');
+
+  const res = await fetch(url.toString(), {
+    signal: AbortSignal.timeout(10_000),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    console.warn(`[sourcing] Google CSE ${res.status}: ${body.slice(0, 200)}`);
+    return [];
+  }
+
+  const data = await res.json() as {
+    items?: Array<{ link: string; title: string; snippet?: string; displayLink: string }>;
+  };
+
+  const blocked = new Set(['linkedin.com', 'facebook.com', 'yelp.com', 'yellowpages.com',
+    'bbb.org', 'manta.com', 'clutch.co', 'crunchbase.com', 'bloomberg.com', 'dnb.com']);
+
+  return (data.items ?? [])
+    .map(item => ({
+      domain: item.displayLink.replace(/^www\./, '').toLowerCase(),
+      title: item.title,
+      snippet: item.snippet ?? '',
+    }))
+    .filter(r => !blocked.has(r.domain) && r.domain.includes('.'));
+}
+
+async function fetchLinkedInViaGoogle(
+  query: string,
+  apiKey: string,
+  cx: string,
+): Promise<RawResult[]> {
+  const url = new URL('https://www.googleapis.com/customsearch/v1');
+  url.searchParams.set('key', apiKey);
+  url.searchParams.set('cx', cx);
+  url.searchParams.set('q', `site:linkedin.com/company ${query}`);
+  url.searchParams.set('num', '10');
+
+  const res = await fetch(url.toString(), {
+    signal: AbortSignal.timeout(10_000),
+  });
+
+  if (!res.ok) return [];
+
+  const data = await res.json() as {
+    items?: Array<{ link: string; title: string; snippet?: string }>;
+  };
+
+  const results: RawResult[] = [];
+
+  for (const item of (data.items ?? [])) {
+    const slugMatch = item.link.match(/linkedin\.com\/company\/([^/?#]+)/);
+    if (!slugMatch) continue;
+
+    const companySlug = slugMatch[1];
+    const snippet = item.snippet ?? '';
+    const title = item.title.replace(/ [|·-] LinkedIn$/, '').trim();
+
+    // Try to extract a website domain from the Google snippet
+    // LinkedIn often includes the company's website in the snippet
+    const websiteMatch = snippet.match(
+      /\b((?!linkedin|facebook|twitter|instagram|youtube)[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.(?:com|net|org|io|co|us|biz))\b/i,
+    );
+
+    const domain = websiteMatch
+      ? websiteMatch[1].toLowerCase()
+      : `${companySlug}.com`; // best-effort guess from slug
+
+    results.push({
+      domain,
+      title,
+      snippet: `[LinkedIn] ${snippet}`,
+    });
+  }
+
+  return results;
+}
+
+// ─── DuckDuckGo fallback ───────────────────────────────────────────────────
+
+async function fetchDuckDuckGoResults(query: string): Promise<RawResult[]> {
   const url = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
   const res = await fetch(url, {
     headers: { 'User-Agent': 'Mozilla/5.0 (compatible; VantageBot/1.0; research)' },
@@ -131,10 +271,9 @@ async function fetchDuckDuckGoResults(
   return parseDdgHtml(html);
 }
 
-function parseDdgHtml(html: string): Array<{ domain: string; title: string; snippet: string }> {
-  const results: Array<{ domain: string; title: string; snippet: string }> = [];
+function parseDdgHtml(html: string): RawResult[] {
+  const results: RawResult[] = [];
 
-  // Extract result blocks (DuckDuckGo HTML layout)
   const blockRegex = /<div class="result[^"]*"[^>]*>([\s\S]*?)<\/div>\s*(?=<div class="result|<\/div>)/g;
   const linkRegex = /href="([^"]+)"/;
   const titleRegex = /<a[^>]*class="result__a"[^>]*>([^<]+)<\/a>/;
@@ -171,16 +310,17 @@ function parseDdgHtml(html: string): Array<{ domain: string; title: string; snip
   return results;
 }
 
-function parseJsonLines(
-  text: string,
-  candidates: Array<{ domain: string; title: string; snippet: string }>,
-): DiscoveredProspect[] {
+// ─── Scoring helpers ───────────────────────────────────────────────────────
+
+function parseJsonLines(text: string, candidates: RawResult[]): DiscoveredProspect[] {
   const results: DiscoveredProspect[] = [];
   const lines = text.split('\n').filter(l => l.trim().startsWith('{'));
 
   for (const line of lines) {
     try {
-      const obj = JSON.parse(line) as { index?: number; domain?: string; companyName?: string; confidence?: number };
+      const obj = JSON.parse(line) as {
+        index?: number; domain?: string; companyName?: string; confidence?: number;
+      };
       const domain = obj.domain ?? candidates[((obj.index ?? 1) - 1)]?.domain;
       if (!domain) continue;
       results.push({

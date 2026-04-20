@@ -7,7 +7,7 @@ async function trpcMutate(path: string, input: unknown) {
   const res = await fetch(`/api/trpc/${path}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ json: input }),
+    body: JSON.stringify(input),
   });
   if (!res.ok) {
     const text = await res.text();

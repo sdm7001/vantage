@@ -46,6 +46,10 @@ const envSchema = z.object({
 
   // Optional: Google PageSpeed Insights API key
   PSI_API_KEY: z.string().optional(),
+
+  // Optional: Google Custom Search (prospect sourcing)
+  GOOGLE_CSE_API_KEY: z.string().optional(),
+  GOOGLE_CSE_CX: z.string().optional(),
 });
 
 export type Env = z.infer<typeof envSchema>;
