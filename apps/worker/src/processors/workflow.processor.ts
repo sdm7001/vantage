@@ -28,10 +28,13 @@ export async function workflowProcessor(data: WorkflowRunJobData): Promise<void>
       await updateSteps(steps);
 
       const enrichQueue = new Queue(QUEUE_NAMES.PROSPECT_ENRICH, { connection: redis });
-      const enrichJob = await enrichQueue.add('enrich', { orgId, prospectId, workflowRunId }, JOB_OPTIONS[QUEUE_NAMES.PROSPECT_ENRICH]);
-
-      // Wait for enrich to complete (poll with timeout)
-      await waitForJob(enrichQueue, enrichJob.id!, 60_000);
+      try {
+        const enrichJob = await enrichQueue.add('enrich', { orgId, prospectId, workflowRunId }, JOB_OPTIONS[QUEUE_NAMES.PROSPECT_ENRICH]);
+        // Wait for enrich to complete (poll with timeout)
+        await waitForJob(enrichQueue, enrichJob.id!, 60_000);
+      } finally {
+        await enrichQueue.close();
+      }
 
       steps[steps.length - 1].status = 'done';
       await updateSteps(steps);
@@ -54,9 +57,13 @@ export async function workflowProcessor(data: WorkflowRunJobData): Promise<void>
       await prisma.prospect.update({ where: { id: prospectId }, data: { status: 'AUDITING' } });
 
       const crawlQueue = new Queue(QUEUE_NAMES.AUDIT_CRAWL, { connection: redis });
-      await crawlQueue.add('crawl', {
-        orgId, prospectId, auditId: audit.id, domain: prospect.domain, workflowRunId,
-      }, JOB_OPTIONS[QUEUE_NAMES.AUDIT_CRAWL]);
+      try {
+        await crawlQueue.add('crawl', {
+          orgId, prospectId, auditId: audit.id, domain: prospect.domain, workflowRunId,
+        }, JOB_OPTIONS[QUEUE_NAMES.AUDIT_CRAWL]);
+      } finally {
+        await crawlQueue.close();
+      }
 
       // Wait for entire audit pipeline (crawl enqueues evaluate internally)
       // Poll on prospect status changing to AUDITED
@@ -90,9 +97,13 @@ export async function workflowProcessor(data: WorkflowRunJobData): Promise<void>
         await prisma.prospect.update({ where: { id: prospectId }, data: { status: 'REPORT_GENERATING' } });
 
         const reportQueue = new Queue(QUEUE_NAMES.REPORT_GENERATE, { connection: redis });
-        await reportQueue.add('generate', {
-          orgId, prospectId, auditId: completedAudit.id, reportId: report.id, workflowRunId,
-        }, JOB_OPTIONS[QUEUE_NAMES.REPORT_GENERATE]);
+        try {
+          await reportQueue.add('generate', {
+            orgId, prospectId, auditId: completedAudit.id, reportId: report.id, workflowRunId,
+          }, JOB_OPTIONS[QUEUE_NAMES.REPORT_GENERATE]);
+        } finally {
+          await reportQueue.close();
+        }
 
         await waitForProspectStatus(prospectId, 'REPORT_READY', 3 * 60_000);
 

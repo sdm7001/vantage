@@ -3,7 +3,7 @@ import { auth } from '@clerk/nextjs/server';
 import { prisma } from '@vantage/database';
 
 const MAX_BYTES = 2 * 1024 * 1024; // 2 MB
-const ALLOWED = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml']);
+const ALLOWED = new Set(['image/png', 'image/jpeg', 'image/webp']);
 
 export async function POST(req: NextRequest) {
   const { userId, orgId: clerkOrgId } = await auth();
