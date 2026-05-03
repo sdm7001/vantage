@@ -2,6 +2,9 @@ import { Worker, Queue } from 'bullmq';
 import { QUEUE_NAMES } from '@vantage/queue';
 import { getEnv } from '@vantage/config';
 import { getRedis } from './lib/redis';
+import { createLogger } from './lib/logger';
+
+const log = createLogger('vantage-worker');
 import { auditCrawlProcessor } from './processors/audit-crawl.processor';
 import { auditEvaluateProcessor } from './processors/audit-evaluate.processor';
 import { reportProcessor } from './processors/report.processor';
@@ -21,14 +24,14 @@ function makeWorker<T>(queueName: string, processor: (data: T) => Promise<void>)
   const worker = new Worker(
     queueName,
     async job => {
-      console.log(`[${queueName}] Processing job ${job.id}`);
+      log.info(`Processing job ${job.id}`, { queue: queueName, jobId: job.id });
       await processor(job.data as T);
     },
     { connection: redis, concurrency }
   );
 
-  worker.on('completed', job => console.log(`[${queueName}] Job ${job.id} completed`));
-  worker.on('failed', (job, err) => console.error(`[${queueName}] Job ${job?.id} failed:`, err.message));
+  worker.on('completed', job => log.info(`Job ${job.id} completed`, { queue: queueName, jobId: job.id }));
+  worker.on('failed', (job, err) => log.error(`Job ${job?.id} failed`, { queue: queueName, jobId: job?.id, error: err.message }));
 
   return worker;
 }
@@ -60,12 +63,11 @@ const schedulerWorker = new Worker(
   { connection: redis, concurrency: 1 }
 );
 
-console.log(`Vantage worker started (concurrency: ${concurrency})`);
-console.log(`Queues: ${Object.values(QUEUE_NAMES).join(', ')}`);
+log.info(`Vantage worker started`, { concurrency, queues: Object.values(QUEUE_NAMES) });
 
 // Graceful shutdown
 async function shutdown() {
-  console.log('Shutting down workers...');
+  log.info('Shutting down workers...');
   await Promise.all([...workers, schedulerWorker].map(w => w.close()));
   await redis.quit();
   process.exit(0);
